@@ -1,6 +1,8 @@
 # IMPORTS
+from os.path import exists
 from sys import exc_info
 from copy import deepcopy
+from json import load
 
 from discord import __version__, Activity, ActivityType, Intents
 from discord.enums import Status
@@ -14,24 +16,46 @@ from utils.FirebaseDB import FirebaseDB
 # NOTES
 
 CONFIG_DEFAULTS = {
-    "debug_mode": False,        
+    "debug_mode": False, 
     # Print exceptions to stdout.
 
-    "muted_dms": [],  # List of UIDs.
-    # Block support DMs from members who abuse the system.
-
+    "muted_dms": list(),   
+    # List of user IDs to block support DMs from. Y'know, in case of the abusers.
+    
     "error_log_channel": 734499801697091654
     # The channel that errors are sent to. 
+    # If debug_mode is set to True, these errors are sent to stdout instead with more detail.
 }
 
 DATA_DEFAULTS = {
-    "UserData": {
-        "UID": {}
+    "VanityAvatars": {
+        "guildID": {
+            "userID": [
+                "avatar_url",
+                "previous",
+                "is_blocked"
+            ]
+        }
+    },
+    "Blacklists": {
+        "authorID": (["channelID"], ["prefix"])
+    },
+    "ServerBlacklists": {
+        "guildID": (["channelID"], ["prefix"])
+    },
+    "Closets": {
+        "authorID": {
+            "closet_name": "closet_url"
+        }
+    },
+    "Webhooks": {
+        "channelID": "webhookID"
     },
     "Tokens": {
-        "BOT_TOKEN": "xxx"
+        "BOT_TOKEN":"xxx",
+        "DBL_TOKEN":"xxx"
     },
-    "config": {}  # To be filled in bot initialization
+    "config": {}
 }
 
 INIT_EXTENSIONS = [
@@ -44,9 +68,18 @@ INIT_EXTENSIONS = [
     "web"
 ]
 
+if exists("Workspace/Files/ServiceAccountKey.json"):
+    key = load("Workspace/Files/ServiceAccountKey.json")
+else:  # If it doesn't exists assume running on replit
+    try:
+        from replit import db
+        key = dict(db)["SAK"]
+    except Exception:
+        raise FileNotFoundError("Could not find ServiceAccountKey.json.")
+
 db = FirebaseDB(
-    "https://nreader-database-default-rtdb.firebaseio.com/", 
-    fp_accountkey_json="Workspace/Files/dumbshit.json")
+    "https://mwsram-database-default-rtdb.firebaseio.com/", 
+    fp_accountkey_json=key)
 
 user_data = db.copy()
 # Check the database
@@ -90,7 +123,7 @@ bot = Bot(
     owner_ids=[331551368789622784],  # Ilexis
     status=Status.idle,
     activity=Activity(type=ActivityType.watching, name=""),
-    command_prefix="test:",
+    command_prefix="var:",
     config=config_data,
 
     database=db,
@@ -106,12 +139,19 @@ print(f"[BOT INIT] Running in: {bot.cwd}\n"
 
 @bot.event
 async def on_ready():
+    await bot.connect_dbl(autopost=True)
+
     app_info = await bot.application_info()
     bot.owner = bot.get_user(app_info.owner.id)
 
     permissions = Permissions()
     permissions.update(
-        # Permissions
+        send_messages=True,
+        embed_links=True,
+        manage_messages=True,
+        manage_webhooks=True,
+        add_reactions=True,
+        attach_files=True
     )
 
     # Add the ErrorLog object if the channel is specified

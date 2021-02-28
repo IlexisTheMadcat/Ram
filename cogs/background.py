@@ -39,15 +39,15 @@ class BackgroundTasks(Cog):
     @loop(seconds=57.5)
     async def save_data(self):
         # If the repl is exited while saving, data may be corrupted or reset.
-        print("[...: 🟢Saving, do not quit...", end="\r")
+        print("[VAR: 🟢Saving, do not quit...", end="\r")
         await sleep(2)
-        print("[...: ⚠Saving, do not quit...", end="\r")
+        print("[VAR: ⚠Saving, do not quit...", end="\r")
         time = datetime.now().strftime("%H:%M, %m/%d/%Y")
 
         self.bot.database.update(self.bot.user_data)
 
         self.bot.inactive = self.bot.inactive + 1
-        print(f"[...: {time}] Running.")
+        print(f"[VAR: {time}] Running.")
         
 
     @status_change.before_loop
