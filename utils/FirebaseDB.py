@@ -6,16 +6,28 @@ from typing import Union
 
 # Now create a class to perform CRUD operations on
 class FirebaseDB:
+    # Markdown supported (`\n` for Python line-break)
     """Create a simple CRUD operations helper for Google Firebase Realtime Databases.\n
     **Initiate with these arguments:**\n
     `databaseURL` - Works with Realtime Databases. Open it and copy its link.\n
-    `fp_accountkey_json` - Fetch this file from the Project settings:\n
+        [REQUIRED.]\n
+    `fp_accountkey_json` - Accepts a `*.json` path or dictionary. Fetch this file from the Project settings:\n
         Service Accounts > Firebase Admin SDK > Python > Generate new private key.\n
+        [Defaults to `"ServiceAccountKey.json"`.]\n
     `app_name` - Initialize the app with this name. *Note that no two instances of this class can have the same name.*\n
+        [Defaults to `"[DEFAULT]"`]\n
     `dbroot_path` - Choose the path of the database dict to start from. This is the destination key whose value will be overwritten.\n
+        [Defaults to `"/"`.]\n
 
+    # Not implemented
+    `default_data` - A 3-element tuple of the default key and value for empty dictionaries and default element for empty lists.\n
+        These elements will not be returned in any form in your code UNLESS you pass `allow_default_values` as True.\n
+        [Defaults to `("DEFAULT_KEY", "DEFAULT_VALUE", "DEFAULT_ELEMENT")`]\n
+    `allow_defualt_values` - Whether or not default values should appear in any part of your code (i.e. only appears in the Firebase Realtime Database)\n
+        [Defaults to `False`.]\n
+    
     **Returns:**\n 
-    ー Attr:`FirebaseDB.project_id` - The project ID that this class is operating on. Useful to check if 2 instances are running on the same project.\n
+    ー Attr: `FirebaseDB.project_id` - The project ID that this class is operating on. Useful to check if 2 instances are running on the same project.\n
     ー Attr: `FirebaseDB.instance_name` - Returns `app_name` from `__init__` for later use. Again, no two instances with the same name can co-exist.\n
     ー Attr: `FirebaseDB.refer` - The Reference object that this class operates on. You can perform manual operations with it if you know how to use the SDK.\n
     ー Attr: `FirebaseDB._dbroot_path` - Returns `dbroot_path` from `__init__` for later use. Used to stay persistant with the root key.\n
@@ -44,9 +56,10 @@ class FirebaseDB:
     """
     def __init__(self, 
         databaseURL:str, 
-        fp_accountkey_json:Union[str,dict]="serviceAccountKeyJSON.json", 
+        fp_accountkey_json:Union[str,dict]="ServiceAccountKey.json", 
         app_name:str="[DEFAULT]", 
         dbroot_path:str="/",
+        default_data:tuple=("DEFAULT_KEY", "DEFAULT_VALUE", "DEFAULT_ELEMENT")
     ) -> dict:
         if isinstance(fp_accountkey_json, str) and not exists(fp_accountkey_json):
             raise FileNotFoundError("The service account key could not be found. Make sure you entered the right location and try again.")
@@ -66,7 +79,35 @@ class FirebaseDB:
         self.project_id = database_app.project_id
         self.instance_name = database_app.name
         self._dbroot_path = dbroot_path
+        self.default_key = default_data[0]
+        self.default_value = default_data[1]
+        self.default_element = default_data[2]
     
+    # Writing default values
+    def recurse_write(self, json:dict):
+        for key, value in json.keys():
+            if isinstance(key, dict) and key:
+                self.recurse_read(key)
+            elif isinstance(key, dict) and not key:
+                json[key][self.default_key] = self.default_value
+            elif isinstance(key, list) and not key:
+                json[key].append(self.default_element)
+        
+        return json
+    
+    # Reading without default values
+    def recurse_read(self, json:dict):
+        for key, value in json.keys():
+            if isinstance(key, dict) and key:
+                self.recurse_read(key)
+            elif isinstance(key, dict) and self.default_key in key.keys():
+                json[key].pop(self.default_key)
+            elif isinstance(key, list) and self.default_element in key:
+                json[key].remove(self.default_element)
+        
+        return json
+
+    # Reading
     def __dict__(self):
         data = self.refer.get(self._dbroot_path)[0]
         if not isinstance(data, dict):
@@ -74,7 +115,6 @@ class FirebaseDB:
         
         return data
     
-    # Reading
     def __getitem__(self, key):
         """Dict-like `__getitem__` designed for Firebase. Returns the requested value."""
         data = self.refer.get(self._dbroot_path)[0]

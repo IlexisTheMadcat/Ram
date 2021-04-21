@@ -6,7 +6,7 @@ from typing import List
 from sys import exc_info
 
 from timeit import default_timer
-from discord import Webhook, Embed, Status, Message
+from discord import Webhook, Status, Message
 from discord.errors import Forbidden, NotFound, HTTPException
 from discord.utils import get
 from discord.ext.commands.cog import Cog
@@ -19,7 +19,7 @@ from discord.ext.commands.errors import (
     NotOwner, BadArgument,
     CheckFailure, CommandOnCooldown)
 
-from utils.classes import Bot
+from utils.classes import Bot, ModdedEmbed as Embed
 from utils.utils import (
     EID_FROM_INT,
     create_engraved_id_from_user,
@@ -51,7 +51,8 @@ class Events(Cog):
             if voted_for == self.bot.user.id:
                 user = await self.bot.fetch_user(voter)
                 try:
-                    await user.send("Voting message")
+                    await user.send("Thanks for voting at top.gg! You can now use the following commands shortly for 12 hours.\n"
+                                    "`add_to_closet, remove_from_closet, rename_cloest_entry, see_closet, preview_closet_entry`\n")
 
                 except HTTPException or Forbidden:
                     print(f"[❌] User \"{user}\" voted for \"{self.bot.user}\". DM Failed.")
@@ -67,130 +68,6 @@ class Events(Cog):
             self.bot.inactive = 0
             return
 
-        # Support DMs
-        if msg.guild is None:
-            if msg.author.id != self.bot.owner_ids[0]:
-                if msg.content.startswith("> "):
-                    if msg.author.id not in self.bot.config['muted_dms']:
-                        if msg.author.id in self.bot.waiting:
-                            await msg.channel.send(":clock9: Please wait, you already have a question open.\n"
-                                                   "You'll get a response from me soon.")
-
-                            return
-
-                        dev_guild = self.bot.get_guild(504090302928125954)
-                        user = dev_guild.fetch_member(self.bot.owner_ids[0])
-                        if user.status == Status.dnd:
-                            await msg.channel.send(":red_circle: The developer currently has "
-                                                   "Do Not Disturb on. Please try again later.")
-                            return
-
-                        status_msg = await msg.channel.send(":clock9: "
-                                                            "I sent your message to the developer.\n"
-                                                            "Please stand by for a response or "
-                                                            "until **this message is edited**...\n")
-
-                        self.bot.waiting.append(msg.author.id)
-
-                        embed = Embed(color=0xff87a3)
-                        embed.title = f"Message from user {msg.author} (ID: {msg.author.id}):"
-                        embed.description = f"{msg.content}\n\n" \
-                                            f"Replying to this DM **within 120 seconds** " \
-                                            f"after accepting **within 10 minutes** " \
-                                            f"will relay the message back to the user."
-
-                        dm = await user.send(content="**PENDING**", embed=embed)
-                        await dm.add_reaction("✅")
-                        await dm.add_reaction("❎")
-
-                        def check(sreaction, suser):
-                            if self.bot.thread_active:
-                                self.bot.loop.create_task(
-                                    reaction.channel.send("There is already an active thread running...\n "
-                                                          "Please finish the **`ACTIVE`** one first."))
-                                return False
-                            else:
-                                return sreaction.message.id == dm.id and \
-                                    str(sreaction.emoji) in ["✅", "❎"] and \
-                                    suser == user
-                        try:
-                            reaction, user = await self.bot.wait_for("reaction_add", timeout=600, check=check)
-                        except TimeoutError:
-                            await dm.edit(content="**TIMED OUT**")
-                            await status_msg.edit(content=":x: "
-                                                          "The developer is unavailable right now. Try again later.")
-                            return
-                        else:
-                            if str(reaction.emoji) == "❎":
-                                await dm.edit(content="**DENIED**")
-                                await status_msg.edit(content=":information_source: The developer denied your message. "
-                                                              "Please make sure you are as detailed as possible.")
-                                return
-                            elif str(reaction.emoji) == "✅":
-                                await dm.edit(content="**ACTIVE**")
-                                await status_msg.edit(content=":information_source: "
-                                                              "The developer is typing a message back...")
-                                self.bot.thread_active = True
-                                pass
-
-                        def check(message):
-                            return message.author == user and message.channel == dm.channel
-                        while True:
-
-                            try:
-                                response = await self.bot.wait_for("message", timeout=120, check=check)
-                            except TimeoutError:
-                                conf = await user.send(":warning: Press the button below to continue typing.")
-                                await conf.add_reaction("🔘")
-
-                                def conf_button(b_reaction, b_user):
-                                    return str(b_reaction.emoji) == "🔘" and b_user == user \
-                                           and b_reaction.message.channel == dm.channel
-
-                                try:
-                                    await self.bot.wait_for("reaction_add", timeout=10, check=conf_button)
-                                except TimeoutError:
-                                    await conf.delete()
-                                    await dm.edit(content="**TIMED OUT**")
-                                    await dm.channel.send("You timed out. "
-                                                          "The user was notified that you are not available right now.")
-
-                                    self.bot.waiting.remove(msg.author.id)
-                                    self.bot.thread_active = False
-                                    await status_msg.edit(content=":information_source: "
-                                                                  "The developer timed out on typing a response. "
-                                                                  "Please ask at a later time.\n"
-                                                                  "You may also join the support server here: "
-                                                                  "https://discord.gg/j2y7jxQ")
-                                    return
-                                else:
-                                    await conf.delete()
-                                    continue
-                            else:
-                                self.bot.waiting.remove(msg.author.id)
-                                self.bot.thread_active = False
-                                await dm.edit(content="**Answered**")
-                                await dm.channel.send(":white_check_mark: Okay, message sent.")
-                                await status_msg.edit(content=":white_check_mark: The developer has responded.")
-                                await msg.channel.send(f":newspaper: Response from the developer:\n{response.content}")
-                                return
-                    else:
-                        await msg.channel.send("You've been muted by the developer, "
-                                               "so you cannot send anything.\n"
-                                               "If you believe you were muted by mistake, "
-                                               "please join the support server:\n"
-                                               "https://discord.gg/j2y7jxQ\n\n"
-                                               "**Note that spamming will get you banned without hesitation.**")
-                        return
-                else:
-                    await msg.channel.send("Please start your message with "
-                                           "\"`> `\" "
-                                           "to ask a question or send compliments.\n"
-                                           "This is the markdown feature to create quotes.",
-                                           delete_after=5)
-                    return
-            return
-    
         # React with passion
         if self.bot.user.mentioned_in(msg):
             try:
@@ -204,11 +81,11 @@ class Events(Cog):
         # Self-Blacklisted
         try:
             for i in self.bot.user_data["Blacklists"][str(msg.author.id)][1]:
-                if msg.content.startswith(i):
+                if not isinstance(i, bool) and msg.content.startswith(i):
                     return
 
             for i in self.bot.user_data["Blacklists"][str(msg.author.id)][0]:
-                if str(msg.channel.id) == i:
+                if not isinstance(i, bool) and str(msg.channel.id) == i:
                     return
 
         except KeyError:
@@ -416,9 +293,8 @@ class Events(Cog):
                                  f"{error}"
 
             elif isinstance(error, CommandNotFound):
-                supposed_command = msg.content.split()[0]
-                em.description = f"Command \"{supposed_command}\" doesn't exist."
-            
+                return
+                        
             elif isinstance(error, CommandOnCooldown):
                 await msg.author.send(embed=Embed(
                     description=f"That command is on a {round(error.cooldown.per)} second cooldown.\n"
@@ -448,7 +324,8 @@ class Events(Cog):
                     except AttributeError:
                         raise error
             
-            await ctx.author.send(embed=em)
+            with suppress(Forbidden):
+                await ctx.send(embed=em)
 
 def setup(bot):
     bot.add_cog(Events(bot))

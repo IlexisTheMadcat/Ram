@@ -224,11 +224,6 @@ Manage a user's ability to use the bot. This applies only in this server.\
 **----** Example: `@SUPER MECH M500` or "SUPER MECH M500#2352"\
 **------** This is the bot developer's YouTube alias. The username could be different.
 
-### **HELP**; Aliases: "h"
-`var:help [section] [command if <section> is "commands"]`\
-**--------------------------------------------------**\
-Shows a directory including the different sections of the help message.
-
 ### **INVITE**
 `var:invite`\
 **--------------------------------------------------**\

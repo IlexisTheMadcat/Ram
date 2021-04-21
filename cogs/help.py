@@ -41,6 +41,7 @@ class MiscCommands(Cog):
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def bhelp(self, ctx):
         emb = Embed(
+            title="<:info:818664266390700074> Help",
             description=f"""
 **{self.bot.description}**
 **Support server: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**
@@ -93,7 +94,7 @@ __`invite`__
         channel = await self.bot.fetch_channel(815473015394926602)
         message = await channel.fetch_message(815473545307881522)
         await ctx.send(embed=Embed(
-            title="Legal Notice",
+            title="<:info:818664266390700074> Legal Notice",
             description=message.content
         ).set_author(
             name=self.bot.user.name,

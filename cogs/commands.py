@@ -15,6 +15,19 @@ from utils.classes import ModdedEmbed as Embed
 class Commands(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
+
+    @command(name="test")
+    @bot_has_permissions(send_messages=True, embed_links=True)
+    async def test(self, ctx):
+        try:
+            await ctx.send("Done (1/2).")
+        except Exception:
+            await ctx.author.send("(1/2) I can't send messages there.")
+        
+        try:
+            await ctx.send(embed=Embed(title="Done (2/2)."))
+        except Exception:
+            await ctx.send("(2/2) I can't send embeds in here.")
     
     # VANITY AVATAR CONTROL
     @command(aliases=["set"])
@@ -114,18 +127,17 @@ class Commands(Cog):
 
             if str(author.id) not in self.bot.user_data["VanityAvatars"][str(guild.id)]:
                 self.bot.user_data["VanityAvatars"][str(guild.id)].update(
-                    {str(author.id): [None, None, False, True]}
-                )
+                    {str(author.id): [None, None, False, True]})
 
             if self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][0] is None:
-                self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)] = [url, url,
-                                                                            self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][2],
-                                                                            self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][3]]
+                self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)] = [
+                    url, url,
+                    self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][2],
+                    self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][3]]
 
             else:
                 self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)] = [
-                    url,
-                    self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][0],
+                    url, self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][0],
                     self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][2],
                     self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][3]
                 ]
@@ -326,9 +338,9 @@ class Commands(Cog):
             except ValueError:
                 await ctx.send(embed=Embed(
                     title="Error",
-                    description=f"`item` needs to be a number and proper channel ID. You can also #mention the channel.\n"
-                                f"See `var:help Commands` under `var:blacklist` "
-                                f"to see how to get channel ID.",
+                    description="`item` for mode `channel-add` needs to be a number and proper channel ID. You can also #mention the channel.\n"
+                                "See `var:help Commands` under `var:blacklist` "
+                                "to see how to get channel ID.",
                     color=0xff0000))
                 
                 return
@@ -339,14 +351,14 @@ class Commands(Cog):
                 except NotFound:
                     await ctx.send(embed=Embed(
                         title="Error",
-                        description=f"No channel with that ID exists.\n"
-                                    f"See `var:help commands` under `var:blacklist` "
-                                    f"to see how to get channel IDs.\nYou can also #mention the channel.",
+                        description="No channel with that ID exists.\n"
+                                    "See `var:help commands` under `var:blacklist` "
+                                    "to see how to get channel IDs.\nYou can also #mention the channel.",
                         color=0xff0000))
 
                 else:
-                    if ctx.author.id not in self.bot.user_data["Blacklists"].keys():
-                        self.bot.user_data["Blacklists"][str(ctx.author.id)] = ([], [])
+                    if str(ctx.author.id) not in self.bot.user_data["Blacklists"].keys():
+                        self.bot.user_data["Blacklists"][str(ctx.author.id)] = ([True], [True])
 
                     if item not in self.bot.user_data["Blacklists"][str(ctx.author.id)][0]:
                         self.bot.user_data["Blacklists"][str(ctx.author.id)][0].append(item)
@@ -397,14 +409,14 @@ class Commands(Cog):
             except ValueError:
                 return await ctx.send(embed=Embed(
                     title="Error",
-                    description=f"`channel` needs to be a number and proper channel ID.\n"
-                                f"Type and enter `var:see_blacklists` "
-                                f"and find the __ID__ of the channel you want to remove from that list.\n"
-                                f"You can also \\#mention the channel.",
+                    description="`item` for mode `channel-remove` needs to be a number and proper channel ID.\n"
+                                "Type and enter `var:see_blacklists` "
+                                "and find the __ID__ of the channel you want to remove from that list.\n"
+                                "You can also \\#mention the channel.",
                     color=0xff0000))
 
             else:
-                if ctx.author.id in self.bot.user_data["Blacklists"].keys():
+                if str(ctx.author.id) in self.bot.user_data["Blacklists"].keys():
                     if item in self.bot.user_data["Blacklists"][str(ctx.author.id)][0]:
                         self.bot.user_data["Blacklists"][str(ctx.author.id)][0].remove(item)
                         channel = self.bot.get_channel(item)
@@ -420,17 +432,17 @@ class Commands(Cog):
                         if not here:
                             await ctx.send(embed=Embed(
                                 title="Error",
-                                description=f"That channel isn't in your blacklist.\n"
-                                            f"Type `var:see_blacklists` to see your "
-                                            f"blacklisted channels and prefixes.",
+                                description="That channel isn't in your blacklist.\n"
+                                            "Type `var:see_blacklists` to see your "
+                                            "blacklisted channels and prefixes.",
                                 color=0xff0000))
 
                         elif here:
                             await ctx.send(embed=Embed(
                                 title="Error",
-                                description=f"This channel isn't in your blacklist.\n"
-                                            f"Type `var:see_blacklists` to see your "
-                                            f"blacklisted channels and prefixes.",
+                                description="This channel isn't in your blacklist.\n"
+                                            "Type `var:see_blacklists` to see your "
+                                            "blacklisted channels and prefixes.",
                                 color=0xff0000))
                         
                         return
@@ -450,7 +462,7 @@ class Commands(Cog):
                     color=0xff0000))
 
             if ctx.author.id not in self.bot.user_data["Blacklists"].keys():
-                self.bot.user_data["Blacklists"][str(ctx.author.id)] = ([], [])
+                self.bot.user_data["Blacklists"][str(ctx.author.id)] = ([True], [True])
 
             if item not in self.bot.user_data["Blacklists"][str(ctx.author.id)][1]:
                 self.bot.user_data["Blacklists"][str(ctx.author.id)][1].append(item)
@@ -466,7 +478,7 @@ class Commands(Cog):
                     color=0xff0000))
 
         elif mode in prefixremove:
-            if ctx.author.id in self.bot.user_data["Blacklists"].keys():
+            if str(ctx.author.id) in self.bot.user_data["Blacklists"].keys():
                 if item in self.bot.user_data["Blacklists"][str(ctx.author.id)][1]:
                     self.bot.user_data["Blacklists"][str(ctx.author.id)][1].remove(item)
                     await ctx.send(embed=Embed(
@@ -500,8 +512,8 @@ class Commands(Cog):
     @command(aliases=["see_bl"])
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def see_blacklists(self, ctx: Context):
-        if ctx.author.id in self.bot.user_data["Blacklists"].keys():
-            if self.bot.user_data["Blacklists"][str(ctx.author.id)] == ([], []):
+        if str(ctx.author.id) in self.bot.user_data["Blacklists"].keys():
+            if self.bot.user_data["Blacklists"][str(ctx.author.id)] == (['0'], ['0']):
                 return await ctx.send(embed=Embed(
                     title="Error",
                     description="You haven't blacklisted anything yet.",
@@ -511,7 +523,7 @@ class Commands(Cog):
 
             async def render():
                 message_part.append("Here are your blacklisted items:\n")
-                if not len(self.bot.user_data["Blacklists"][str(ctx.author.id)][0]) == 0:
+                if len(self.bot.user_data["Blacklists"][str(ctx.author.id)][0]):
                     message_part.append("**Channels:**\n")
                     for n in self.bot.user_data["Blacklists"][str(ctx.author.id)][0]:
                         try:
@@ -876,9 +888,9 @@ class Commands(Cog):
         except KeyError or IndexError:
             return await ctx.send(embed=Embed(
                 title="Name Error",
-                description=f"A closet entry with that name doesn't exist. "
-                            f"See your closet entries with this command: "
-                            f"`var:see_closet`.",
+                description="A closet entry with that name doesn't exist. "
+                            "See your closet entries with this command: "
+                            "`var:see_closet`.",
                 color=0xff0000))
     
     # MODERATION

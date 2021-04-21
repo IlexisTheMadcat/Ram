@@ -1,9 +1,7 @@
 # IMPORTS
-from replit import db
 from os import getcwd
 from sys import exc_info
 from typing import List
-from copy import deepcopy
 
 from discord import Embed
 from dbl.client import DBLClient
