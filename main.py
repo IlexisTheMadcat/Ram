@@ -15,47 +15,72 @@ from utils.FirebaseDB import FirebaseDB
 
 # NOTES
 
-CONFIG_DEFAULTS = {
-    "debug_mode": False, 
-    # Print exceptions to stdout.
-
-    "muted_dms": list(),   
-    # List of user IDs to block support DMs from. Y'know, in case of the abusers.
-    
-    "error_log_channel": 734499801697091654
-    # The channel that errors are sent to. 
-    # If debug_mode is set to True, these errors are sent to stdout instead with more detail.
-}
-
 DATA_DEFAULTS = {
-    "VanityAvatars": {
-        "guildID": {
-            "userID": [
-                "avatar_url",
-                "previous",
-                "is_blocked"
-            ]
+    "UserData": {
+        "UID": {
+            "Settings": {  # User Settings dict
+                "NotificationsDue": {
+                    "FirstTime": False,
+                    "QuickDeleteTip": False
+                },  # {str(name):bool}
+                # A notification sent to users when they use a command for the first time.
+                # These are set to true after being executed. Resets by command.
+
+                # Whether or not the user wants to use the quick delete feature.
+                "QuickDelete": True
+            },
+            "VanityAvatars": {
+                "guildID": [
+                    "https://example.com/image2.png",  # str(imageURL) or None ; Current vanity
+                    "https://example.com/image1.png",  # str(imageURL) or None ; Previous vanity 
+                ]
+            },
+
+            # Messages sent in channels whose IDs are in the first list are ignored.
+            # Messages sent that start with any element in the second list are ignored.
+            "Blacklists": ([0], ["placeholder"]),  # ([int(channelID)], [str(prefix)])
+
+            # A library of up to 10 closet entries locked by top.gg voting.
+            # These are global and can be accessed cross-server.
+            "Closet": {"placeholder":"placeholder"}  # {str(name): str(imageURL)}
         }
     },
-    "Blacklists": {
-        "authorID": (["channelID"], ["prefix"])
-    },
-    "ServerBlacklists": {
-        "guildID": (["channelID"], ["prefix"])
-    },
-    "Closets": {
-        "authorID": {
-            "closet_name": "closet_url"
+    
+    # Only users with certain permissions may modify this.
+    "GuildData": {
+        "GID": {
+            "Settings": {
+                
+            },
+            "ServerBlacklists": ([0], ["placeholder"]),  # ([int(channelID)], [str(prefix)])
+            "BlockedUsers": [0]  # [int(userID)]
         }
     },
-    "Webhooks": {
-        "channelID": "webhookID"
-    },
+
+    # Stores webhooks and respective channel IDs for easy access.
+    "Webhooks": {"placeholder":"placeholder"},  # {str(channelID): str(webhookID)}
+
     "Tokens": {
         "BOT_TOKEN":"xxx",
         "DBL_TOKEN":"xxx"
     },
-    "config": {}
+
+    "config": {
+        "debug_mode": False, 
+        # Print exceptions to stdout.
+        
+        "error_log_channel": 734499801697091654,
+        # The channel that errors are sent to. 
+        
+        "first_time_tip": "👋 It appears to be your first time using this bot!\n"
+                          "ℹ️ For more information and help, please visit [this GitHub README](https://github.com/SUPERMECHM500/MWSRam-Outdated#vanity-profile-pics--ram).\n"
+                          "ℹ️ For brief legal information, please use the `var:legal` command.\n"
+                          "||(If you are recieving this notification again, your data has been reset due to storage issues. Join the support server if you have previous data you want to retain.)||",
+        
+        "quick_delete_tip": "You just sent your first vanity message!\n"
+                            "As you most likely have already seen, the 🗑 emoji appeared under your message for a few seconds. This is for quickly deleting your message.\n"
+                            "You may toggle this behavior by running the command `var:quick_del`."
+    }
 }
 
 INIT_EXTENSIONS = [
@@ -96,16 +121,17 @@ for key in found_data:
         print(f"[REDUNDANCY] Invalid data \'{key}\' found. "
               f"Removed key from file.")
 del found_data  # Remove variable from namespace
+
 config_data = user_data["config"]
 # Check the bot config
-for key in CONFIG_DEFAULTS:
+for key in DATA_DEFAULTS['config']:
     if key not in config_data:
-        config_data[key] = CONFIG_DEFAULTS[key]
+        config_data[key] = DATA_DEFAULTS['config'][key]
         print(f"[MISSING VALUE] Config '{key}' missing. "
-              f"Inserted default '{CONFIG_DEFAULTS[key]}'")
+              f"Inserted default '{DATA_DEFAULTS['config'][key]}'")
 found_data = deepcopy(config_data)  # Duplicate to avoid RuntimeError exception
 for key in found_data:
-    if key not in CONFIG_DEFAULTS:
+    if key not in DATA_DEFAULTS['config']:
         config_data.pop(key)  # Remove redundant data
         print(f"[REDUNDANCY] Invalid config \'{key}\' found. "
               f"Removed key from file.")
@@ -113,23 +139,21 @@ del found_data  # Remove variable from namespace
 
 db.update(user_data)
 
-print("[BOT INIT] Configurations loaded.")
-
-
 intents = Intents.default()
 intents.presences = True
 
 bot = Bot(
-    description="This is a bot template for MechHub Bot Factory",
+    description="Create server-specific avatars.",
     owner_ids=[331551368789622784],  # Ilexis
     status=Status.idle,
-    activity=Activity(type=ActivityType.watching, name=""),
+    activity=Activity(type=ActivityType.playing, name="with the mirror."),
     command_prefix="var:",
+    
     config=config_data,
-
     database=db,
-    user_data=user_data,
-    auth=db["Tokens"]
+    user_data=user_data,   
+    defaults=DATA_DEFAULTS,
+    auth=db["Tokens"],
 )
 
 # If a custom help command is created:
@@ -156,8 +180,9 @@ async def on_ready():
     )
 
     # Add the ErrorLog object if the channel is specified
-    if bot.user_data["config"]["error_log_channel"]:
-        bot.errorlog = ErrorLog(bot, bot.user_data["config"]["error_log_channel"])
+    if bot.config["error_log_channel"]:
+        error_channel = await bot.fetch_channel(bot.config["error_log_channel"])
+        bot.errorlog = ErrorLog(bot, error_channel)
 
     print("\n"
           "#-------------------------------#\n"
@@ -169,13 +194,13 @@ async def on_ready():
             bot.load_extension(f"cogs.{cog}")
             print(f"| Loaded initial cog {cog}")
         except Exception as e:
-            print(f"| Failed to load extension {cog}\n|   {type(e.original).__name__}: {e.original}")
+            try:
+                print(f"| Failed to load extension {cog}\n|   {type(e.original).__name__}: {e.original}")
+            except AttributeError:
+                print(f"| Failed to load extension {cog}\n|   {type(e).__name__}: {e}")
             error = exc_info()
             if error:
                 await bot.errorlog.send(error, event="Load Initial Cog")
-        
-            print("[BOT FAILED] Check the ErrorLog for error details.")
-            await bot.logout()
 
     print(f"#-------------------------------#\n"
           f"| Successfully logged in.\n"

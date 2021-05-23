@@ -43,7 +43,7 @@ class MiscCommands(Cog):
         emb = Embed(
             title="<:info:818664266390700074> Help",
             description=f"""
-**{self.bot.description}**
+**{self.bot.description}** 
 **Support server: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**
 
 My help message is quite long, and I can't really simplify it down.

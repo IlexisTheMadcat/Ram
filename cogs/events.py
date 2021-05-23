@@ -1,12 +1,11 @@
 # IMPORTS
-from asyncio.exceptions import TimeoutError
 from asyncio import sleep
 from contextlib import suppress
-from typing import List
 from sys import exc_info
+from copy import deepcopy
 
 from timeit import default_timer
-from discord import Webhook, Status, Message
+from discord import Webhook, Message
 from discord.errors import Forbidden, NotFound, HTTPException
 from discord.utils import get
 from discord.ext.commands.cog import Cog
@@ -23,7 +22,7 @@ from utils.classes import Bot, ModdedEmbed as Embed
 from utils.utils import (
     EID_FROM_INT,
     create_engraved_id_from_user,
-    get_engraved_id_from_msg,)
+    get_engraved_id_from_msg)
 
 class Events(Cog):
     def __init__(self, bot: Bot):
@@ -33,163 +32,169 @@ class Events(Cog):
     # --------------------------------------------------------------------------------------------------------------------------
     @Cog.listener()
     async def on_message(self, msg: Message):
-        # MechHub Bot Status response
-        if msg.author.id == 805162807942709268 and \
-            msg.content.startswith(f"[{self.bot.user.id}] [MechHub Message Ping]"):
-            await msg.channel.send("Pong!")
-            return
-        
-        if msg.author.id == self.bot.user.id:
-            return  # Don't respond to bots.
+        verify_command = await self.bot.get_context(msg)
 
+        # Cooldown
+        if msg.author.id in self.bot.global_cooldown: return
+        else: self.bot.global_cooldown.update({msg.author.id:"placeholder"})
+        
+        # Don't respond to bots.
+        if msg.author.id == self.bot.user.id:
+            return
+
+        # If bot listing supports webhooks
         if msg.author.id == 726313554717835284:  
-            # If bot listing supports webhooks
             ids = msg.content.split(";")
             voter = int(ids[0])
             voted_for = int(ids[1])
 
             if voted_for == self.bot.user.id:
-                user = await self.bot.fetch_user(voter)
+                user = await self.bot.get_user(voter)
+                if not user: return
+
                 try:
                     await user.send("Thanks for voting at top.gg! You can now use the following commands shortly for 12 hours.\n"
                                     "`add_to_closet, remove_from_closet, rename_cloest_entry, see_closet, preview_closet_entry`\n")
 
                 except HTTPException or Forbidden:
-                    print(f"[❌] User \"{user}\" voted for \"{self.bot.user}\". DM Failed.")
+                    print(f"[❌] {user} ({user.id}) voted for \"{self.bot.user}\". DM Failed.")
                 else:
-                    print(f"[✅] User \"{user}\" voted for \"{self.bot.user}\".")
+                    print(f"[✅] {user} ({user.id} voted for \"{self.bot.user}\".")
 
                 return
 
-        # Check if the message is a command. 
-        # Terminates the event if so, so the command can run.
-        verify_command = await self.bot.get_context(msg)
-        if verify_command.valid:
-            self.bot.inactive = 0
-            return
-
-        # React with passion
-        if self.bot.user.mentioned_in(msg):
+        if msg.guild and not verify_command.valid:
+            # Self-Blacklisted
             try:
-                if msg.author.id in self.bot.owner_ids:
-                    await msg.add_reaction("💕")
-                else:
-                    await msg.add_reaction("👋")
-            except Forbidden:
+                for i in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][1]:
+                    if msg.content.startswith(i):
+                        return
+
+                if msg.channel.id in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][0]:
+                    return
+
+            except KeyError:
                 pass
 
-        # Self-Blacklisted
-        try:
-            for i in self.bot.user_data["Blacklists"][str(msg.author.id)][1]:
-                if not isinstance(i, bool) and msg.content.startswith(i):
-                    return
-
-            for i in self.bot.user_data["Blacklists"][str(msg.author.id)][0]:
-                if not isinstance(i, bool) and str(msg.channel.id) == i:
-                    return
-
-        except KeyError:
-            pass
-
-        # Server-Blacklisted
-        try:
-            for i in self.bot.user_data["ServerBlacklists"][str(msg.guild.id)][1]:
-                if msg.content.startswith(i):
-                    return
-
-            for i in self.bot.user_data["ServerBlacklists"][str(msg.guild.id)][0]:
-                if str(msg.channel.id) == i:
-                    return
-
-        except KeyError:
-            pass
-
-        # Get attachments
-        start = default_timer()
-        attachment_files = []
-        for i in msg.attachments:
+            # Server-Blacklisted
             try:
-                dcfileobj = await i.to_file()
-                attachment_files.append(dcfileobj)
-            except Exception as e:
-                print("[Error while getting attachment]", e)
-                continue
+                for i in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][1]:
+                    if msg.content.startswith(i):
+                        return
 
-        try:
-            engravedid = get_engraved_id_from_msg(msg.content)
-            if engravedid:
-                eid_user = await self.bot.fetch_user(engravedid)
-                if eid_user:
-                    if self.bot.user_data["VanityAvatars"][str(msg.guild.id)][str(eid_user.id)][3]:
-                        with suppress(Forbidden):
-                            await msg.add_reaction("❌")
+                if msg.channel.id in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][0]:
+                    return
+
+            except KeyError:
+                pass
+
+            # Get attachments
+            start = default_timer()
+            attachment_files = []
+            for i in msg.attachments:
+                try:
+                    dcfileobj = await i.to_file()
+                    attachment_files.append(dcfileobj)
+                except Exception as e:
+                    print("[Error while getting attachment]", e)
+                    continue
+
+            try:
+                engravedid = get_engraved_id_from_msg(msg.content)
+                if engravedid:
+                    eid_user = await self.bot.fetch_user(engravedid)
+                    if eid_user:
+                        if self.bot.user_data["UserData"][str(eid_user.id)]["Settings"]["QuickDelete"]:
+                            with suppress(Forbidden):
+                                await msg.add_reaction("🗑")
+                            
+                            if not self.bot.user_data["UserData"][str(eid_user.id)]["Settings"]["NotificationsDue"]["QuickDeleteTip"]:
+                                with suppress(Forbidden):
+                                    await eid_user.send(embed=Embed(
+                                        title="Quick Delete Notification",
+                                        description=self.bot.config["quick_delete_tip"]))
+                            
+                            self.bot.user_data["UserData"][str(eid_user.id)]["Settings"]["NotificationsDue"]["QuickDeleteTip"] = True
+
                             await sleep(5)
                             with suppress(NotFound):
-                                await msg.remove_reaction("❌", msg.guild.me)
+                                await msg.remove_reaction("🗑", msg.guild.me)
 
-            if str(msg.author.id) in self.bot.user_data["VanityAvatars"][str(msg.guild.id)].keys() and \
-                    not msg.author.bot and \
-                    self.bot.user_data["VanityAvatars"][str(msg.guild.id)][str(msg.author.id)][0]:
+                if not msg.author.bot and self.bot.user_data["UserData"][str(msg.author.id)]["VanityAvatars"][str(msg.guild.id)][0]:
+                    engravedid = create_engraved_id_from_user(msg.author.id)
 
-                engravedid = create_engraved_id_from_user(msg.author.id)
+                    if msg.content != "":
+                        new_content = f"{msg.content}  {engravedid}"
+                    else:
+                        new_content = EID_FROM_INT[10] + engravedid
 
-                if msg.content != "":
-                    new_content = f"{msg.content}  {engravedid}"
-                else:
-                    new_content = EID_FROM_INT[10] + engravedid
+                    bot_perms = msg.channel.permissions_for(msg.guild.me)
+                    if not all((
+                        bot_perms.manage_messages,
+                        bot_perms.manage_webhooks)):
+                        await msg.author.send(
+                            f"Your message couldn't be transformed because I am "
+                            f"missing 1 or more permissions listed in "
+                            f"`{self.bot.command_prefix}help` under `Required Permissions`.\n"
+                            f"If you keep getting this error, remove your "
+                            f"vanity avatar or blacklist the channel you are "
+                            f"trying to use it in.")
 
-                bot_perms = msg.channel.permissions_for(msg.guild.me)
-                if not all((
-                    bot_perms.manage_messages,
-                    bot_perms.manage_webhooks)):
-                    await msg.author.send(
-                        f"Your message couldn't be transformed because I am "
-                        f"missing 1 or more permissions listed in "
-                        f"`{self.bot.command_prefix}help` under `Required Permissions`.\n"
-                        f"If you keep getting this error, remove your "
-                        f"vanity avatar or blacklist the channel you are "
-                        f"trying to use it in.")
-
-                    del start
-                    return
-                else:
-                    if "Webhooks" not in self.bot.user_data.keys():
-                        self.bot.user_data["Webhooks"] = {"channelID": "webhookID"}
-
-                    if str(msg.channel.id) not in self.bot.user_data["Webhooks"]:
-                        self.bot.user_data["Webhooks"][str(msg.channel.id)] = 0
-
-                    webhooks: List[Webhook] = await msg.channel.webhooks()
-                    webhook: Webhook = get(webhooks, id=self.bot.user_data["Webhooks"].get(str(msg.channel.id)))
-                    if webhook is None:
-                        webhook: Webhook = await msg.channel.create_webhook(name="Vanity Profile Pics")
-                        self.bot.user_data["Webhooks"][str(msg.channel.id)] = webhook.id
-
-                    try:
-                        await msg.delete()
-                        await webhook.send(
-                            new_content,
-                            files=attachment_files,
-                            avatar_url=self.bot.user_data["VanityAvatars"][str(msg.guild.id)][str(msg.author.id)][0],
-                            username=msg.author.display_name)
-                    
-                    except Exception:
-                        await msg.author.send("I failed to transform your message, please use the `var:set` command again with a proper url.")
                         del start
                         return
                     
+                    else:
+                        webhooks = await msg.channel.webhooks()
+                        webhook = get(webhooks, id=self.bot.user_data["Webhooks"].get(str(msg.channel.id)))
+                        if webhook is None:
+                            webhook: Webhook = await msg.channel.create_webhook(name="Vanity Profile Pics")
+                            self.bot.user_data["Webhooks"][str(msg.channel.id)] = webhook.id
+
+                        try:
+                            await msg.delete()
+                            await webhook.send(
+                                new_content,
+                                files=attachment_files,
+                                avatar_url=self.bot.user_data["UserData"][str(msg.author.id)]["VanityAvatars"][str(msg.guild.id)][0],
+                                username=msg.author.display_name)
+                        
+                        except Exception:
+                            await msg.author.send("I failed to transform your message, please use the `var:set` command again with a proper url.")
+                            del start
+                            return
+                        
+                        self.bot.inactive = 0
+                        stop = default_timer()
+
+                    comptime = round(stop-start, 3)
+                    print(f"[] Response delay {str(comptime).ljust(5)}s from {msg.author} ({msg.author.id}).")
+
                     self.bot.inactive = 0
-                    stop = default_timer()
 
-                comptime = round(stop - start, 3)
-                print(f"[] Response delay {str(comptime).ljust(5)}s from {msg.author} ({msg.author.id})")
+                else:
+                    return
 
-                self.bot.inactive = 0
-
-            else:
+            except KeyError:
                 return
 
-        except KeyError:
+        # Checks if the message is any attempted command.
+        if msg.content.startswith(self.bot.command_prefix) and not msg.content.startswith(self.bot.command_prefix+" "):
+            if str(msg.author.id) not in self.bot.user_data["UserData"]:
+                self.bot.user_data["UserData"][str(msg.author.id)] = deepcopy(self.bot.defaults["UserData"]["UID"])
+            if "GuildData" in self.bot.defaults and msg.guild and str(msg.guild.id) not in self.bot.user_data["GuildData"]:
+                self.bot.user_data["GuildData"][str(msg.guild.id)] = deepcopy(self.bot.defaults["GuildData"]["GID"])
+
+            if not self.bot.user_data["UserData"][str(msg.author.id)]["Settings"]["NotificationsDue"]["FirstTime"]:
+                with suppress(Forbidden):
+                    await msg.author.send(embed=Embed(
+                        title="First Time Interaction Notification",
+                        description=self.bot.config["first_time_tip"]))
+                
+                self.bot.user_data["UserData"][str(msg.author.id)]["Settings"]["NotificationsDue"]["FirstTime"] = True
+
+            self.bot.inactive = 0
+        
+            await self.bot.process_commands(msg)
             return
 
     # Deleting/Inquiring a message
@@ -210,7 +215,7 @@ class Events(Cog):
         if user == self.bot.user:
             return
 
-        if str(payload.emoji) == "❌":
+        if str(payload.emoji) in ["❌", "🗑"]:
             engravedid = get_engraved_id_from_msg(message.content)
             if engravedid:
                 identification = await self.bot.fetch_user(engravedid)
@@ -236,24 +241,34 @@ class Events(Cog):
                             payload.emoji,
                             user.id)
                         
-                        await user.send('`If you want to do that, this bot needs the "Manage Messages" permission.`')
+                        await user.send('If you want to do that, this bot needs the "Manage Messages" permission.')
             else:
                 if user != self.bot.user:
                     with suppress(Forbidden):
-                        await user.send(f"That's not your message to delete. "
-                                        f"Ask {str(identification)} to delete it.\n"
-                                        f"The reaction was left unchanged.")
+                        await user.send(
+                            f"That's not your message to delete. "
+                            f"Ask {str(identification)} to delete it.\n"
+                            f"The reaction was left unchanged.")
 
         elif str(payload.emoji) == "❓" and \
             message.author.bot and \
             message.author.discriminator == "0000":
             engravedid = get_engraved_id_from_msg(message.content)
-            identification = await self.bot.fetch_user(engravedid)
-
-            with suppress(Forbidden):
-                await user.send(
-                    f'Unsure who that was?\nTheir username is \"{str(identification)}\".\n'
-                    f'The reaction was left unchanged.')
+            if engravedid:
+                identification = await self.bot.fetch_user(engravedid)
+            else:
+                return
+            
+            if user != identification:
+                with suppress(Forbidden):
+                    await user.send(
+                        "Unsure who that was? It was you, of course!\n"
+                        "The reaction was left unchanged.")
+            else:
+                with suppress(Forbidden):
+                    await user.send(
+                        f"Unsure who that was? Their username is {str(identification)} (UID: {str(identification.id)}).\n"
+                        f"The reaction was left unchanged.")
         else:
             return
 
@@ -265,11 +280,14 @@ class Events(Cog):
             with suppress(Forbidden):
                 await ctx.message.add_reaction("❌")
             
-        if not isinstance(error, CommandOnCooldown):
+        if ctx.command and not isinstance(error, CommandOnCooldown):
             ctx.command.reset_cooldown(ctx)
             
         if self.bot.config['debug_mode']:
-            raise error.original
+            try:
+                raise error.original
+            except AttributeError:
+                raise error
             
         if not self.bot.config['debug_mode']:
             msg = ctx.message
@@ -304,28 +322,42 @@ class Events(Cog):
                 return
 
             else:
-                em.description = f"**{type(error.original).__name__}**: {error.original}\n" \
-                                 f"\n" \
-                                 f"If you keep getting this error, please join the support server "
-
+                try:
+                    em.description = f"**{type(error.original).__name__}**: {error.original}\n" \
+                                    f"\n" \
+                                    f"If you keep getting this error, please join the support server."
+                except AttributeError:
+                    em.description = f"**{type(error).__name__}**: {error}\n" \
+                                    f"\n" \
+                                    f"If you keep getting this error, please join the support server."
+                
                 # Raising the exception causes the progam 
                 # to think about the exception in the wrong way, so we must 
                 # target the exception indirectly.
                 if not self.bot.config["debug_mode"]:
                     try:
-                        raise error.original
+                        try:
+                            raise error.original
+                        except AttributeError:
+                            raise error
                     except Exception:
                         error = exc_info()
 
-                    await self.bot.errorlog.send(error, event=f"Command: {ctx.command.name}")
+                    await self.bot.errorlog.send(error, ctx=ctx, event=f"Command: {ctx.command.name}")
                 else:
                     try:
                         raise error.original
                     except AttributeError:
                         raise error
             
-            with suppress(Forbidden):
+            try:
                 await ctx.send(embed=em)
+            except Forbidden:
+                with suppress(Forbidden):
+                    await ctx.author.send(
+                        content="This error was sent likely because I "
+                                "was blocked from sending messages there.",
+                        embed=em)
 
 def setup(bot):
     bot.add_cog(Events(bot))

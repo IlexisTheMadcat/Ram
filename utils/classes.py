@@ -3,12 +3,11 @@ from os import getcwd
 from sys import exc_info
 from typing import List
 
+from expiringdict import ExpiringDict
 from discord import Embed
 from dbl.client import DBLClient
 from dbl.errors import DBLException
 from discord.ext.commands.bot import Bot as DiscordBot
-
-from utils.errorlog import ErrorLog
 
 
 class Paginator:
@@ -96,6 +95,8 @@ class Paginator:
         self._pages = ret
         return self.pages
 
+class BotInteractionCooldown(Exception):
+    pass
 
 class Bot(DiscordBot):
 
@@ -111,15 +112,14 @@ class Bot(DiscordBot):
         # If true, the developer cannot accept a support message if another is already active.
         self.thread_active = False
 
-        # Alias for user_data['config']
-        self.config = kwargs.pop("config") 
+        # Default data. Used to initialize and update data structures.
+        self.defaults = kwargs.pop("defaults")
 
-         # Online database
-        self.database = kwargs.pop("database")
-
-        # Local copy of the database
-        self.user_data = kwargs.pop("user_data")
-        print("[BOT INIT] Loaded data.")
+        # Database
+        self.database = kwargs.pop("database")  # Online
+        self.user_data = kwargs.pop("user_data") # Local
+        self.config = self.user_data["config"]  # Shortcut for user_data['config']
+        print("[] Data and configurations loaded.")
 
         # To be filled by self.connect_dbl() in on_ready
         self.dbl: DBLClient = kwargs.pop("dbl", None)
@@ -130,7 +130,10 @@ class Bot(DiscordBot):
         # Get the channel ready for errorlog
         # Bot.get_channel method not available until on_ready
         self.errorlog_channel: int = kwargs.pop("errorlog", None)
-        self.errorlog: ErrorLog = kwargs.get("errorlog", None)
+        
+        # Cooldown to be used in all loops and the beginnings of commands.
+        # Users whose ID is in here cannot interact with the bot for `max_age_seconds`
+        self.global_cooldown = ExpiringDict(max_len=float('inf'), max_age_seconds=2)
 
         # Load bot arguments into __init__
         super().__init__(*args, **kwargs)
@@ -173,11 +176,11 @@ class Bot(DiscordBot):
             return None
 
         return await self.dbl.get_user_vote(user_id)
-    
+
     async def on_error(self, event_name, *args, **kwargs):
         '''Error handler for Exceptions raised in events'''
         if self.config["debug_mode"]:  # Hold true the purpose for the debug_mode option
-            await super().on_error(event_method=event_name, *args, **kwargs)
+            await super().on_error(*args, **kwargs)
             return
         
         # Try to get Exception that was raised
@@ -191,6 +194,30 @@ class Bot(DiscordBot):
         else:
             await super().on_error(event_method=event_name, *args, **kwargs)
 
+    async def on_message(self, msg):
+        """Disable primary Bot.process_commands listener for cogs to call individually."""
+        return
+
+    async def wait_for(self, *args, **kwargs):
+        """Delay primary Bot.wait_for listener. Raises CommandOnCooldown if on cooldown."""
+        bypass_cooldown: bool = kwargs.pop("bypass_cooldown", False)
+        if bypass_cooldown:
+            return await super().wait_for(*args, **kwargs)
+        
+        if "message" in args:
+            msg = await super().wait_for(*args, **kwargs)
+            if msg.author.id in self.global_cooldown: raise BotInteractionCooldown("Bot interaction on cooldown.")
+            else: self.global_cooldown.update({msg.author.id:"placeholder"})
+            return msg
+
+        elif "reaction_add" in args:
+            reaction, user = await super().wait_for(*args, **kwargs)
+            if user.id in self.global_cooldown: raise BotInteractionCooldown("Bot interaction on cooldown.")
+            else: self.global_cooldown.update({user.id:"placeholder"})
+            return reaction, user
+        
+        else:
+            return await super().wait_for(*args, **kwargs)
 
 # Override default color for bot fanciness
 class ModdedEmbed(Embed):

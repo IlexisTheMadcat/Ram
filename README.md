@@ -114,26 +114,21 @@ Preview how your image will appear as the vanity icon.\
 This feature-set allows you to block Ram from transforming your message if it is in a certain channel or starts with a certain prefix.
 
 ### BLACKLIST; Aliases: "bl"
-`vara:blacklist <mode> [item]`\
+`vara:blacklist [mode] [item]`\
 **--------------------------------------------------**\
 You have the option to blacklist channels from transforming your messages.\
-**--** "mode" can be one of the following:\
+**--** `mode` can be "view" (default) to show the blacklist, or one of the following to edit:\
 **----** `channal-add` or `ch-a` - add a channel to turn vanity avatars off for that channel.\
 **----** `channal-remove` or `ch-r` - remove a channel to turn vanity avatars back on for that channel.\
 **----** `prefix-add` or `pf-a` - add a prefix to prevent vanity messaages from appearing for messages starting with said prefix.\
 **----** `prefix-remove` or `pf-a` - remove a prefix to allow vanity messages to appear for messages starting with said prefix.\
 **--** `item` can be a channel ID (`[channal-add, channal-remove]`), or a prefix string (`[prefix-add, prefix-remove]`).\
 **----** `item` is required when using the modes `prefix-add` or `prefix-remove`.\
-**----** To get a channel ID, turn Developer Mode on in Discord, then right-click on the target channel and click "Copy ID".\
-**----** Or instead, you can mention the channel.
+**----** `item` is optional when using the modes `channel-add` or `channel-remove`. 
+**----** If left empty, `item` will be the channel you run the command in.
 
 *Sending a message in a channel that is in your blacklist will not transform it.*\
 *Sending a message starting with a prefix in your blacklist will not transform it.*
-
-### SEE_BLACKLISTS; Aliases: "see_bl"
-`var:see_blacklists`\
-**--------------------------------------------------**\
-See all items that you blacklisted. These can be managed cross-server because they are tied to your user id.
 
 ## Closets - These commands require you to vote the bot at [Top.gg](https://top.gg/bot/687427956364279873).
 This feature-set allows you to store your favorite vanities into a Key:Value dictionary.\

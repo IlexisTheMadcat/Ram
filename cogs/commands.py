@@ -1,16 +1,14 @@
-from os import remove
-
-from discord import File, Member
+from discord import Member
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
 from discord.ext.commands.core import has_permissions, bot_has_permissions, command
 from discord.user import User
 from discord.errors import NotFound
-from requests import get
-from PIL import Image
 
-from utils.classes import Bot
-from utils.classes import ModdedEmbed as Embed
+from utils.classes import Bot, ModdedEmbed as Embed
+
+newline = "\n"
+
 
 class Commands(Cog):
     def __init__(self, bot: Bot):
@@ -33,13 +31,7 @@ class Commands(Cog):
     @command(aliases=["set"])
     @bot_has_permissions(manage_webhooks=True, send_messages=True, embed_links=True)
     async def set_vanity(self, ctx: Context, url: str = None):
-
-        guild = ctx.guild
-        author = ctx.author
-        chan = ctx.channel
-        msg = ctx.message
-
-        if not guild:
+        if not ctx.guild:
             return await ctx.send(embed=Embed(
                 title="Error",
                 description="This command cannot be used in a DM channel. "
@@ -49,32 +41,32 @@ class Commands(Cog):
         user_perms = ctx.channel.permissions_for(ctx.author)
         mode = "an image URL"
 
-        if (str(guild.id) in self.bot.user_data["VanityAvatars"] and
-                str(author.id) in self.bot.user_data["VanityAvatars"][str(guild.id)] and
-                self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][2]) and \
-                not user_perms.manage_nicknames:
-            return await ctx.send(embed=Embed(
+        if ctx.author.id in self.bot.user_data["GuildData"][str(ctx.guild.id)]["BlockedUsers"] and \
+            not user_perms.manage_messages:
+            await ctx.send(embed=Embed(
                 title="Permission Denied",
                 description="You are currently blocked from using vanity avatars in this "
                             "server. Contact a moderator with the `Manage Messages` "
                             "permission to unblock you.",
                 color=0xff0000))
+            
+            return
         
         try:
-            if url in self.bot.user_data["Closets"][str(author.id)]:
-                check = await self.bot.get_user_vote(str(author.id))
+            if url in self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"]:
+                check = await self.bot.get_user_vote(ctx.author.id)
 
                 if not check:
                     return await ctx.send(embed=Embed(
                         title="Vote-Locked!",
                         description=f"Closets are vote-locked. Please go to "
-                                    f"{self.bot.dbl_vote} and click on 'Vote'.\nThen come "
-                                    f"back and try again. If you just now voted, wait a "
-                                    f"few moments.",
+                                    f"{self.bot.dbl_vote} and click on 'Vote'."
+                                    f"Then come back and try again.\n"
+                                    f"If you just now voted, wait a few moments.",
                         color=0xff0000))
 
                 elif check:
-                    url = self.bot.user_data["Closets"][str(author.id)][url]
+                    url = self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"][url]
                     mode = "closet entry"
             else:
                 pass
@@ -84,12 +76,12 @@ class Commands(Cog):
         
         if url is None:
             try:
-                url = msg.attachments[0].url
+                url = ctx.message.attachments[0].url
                 mode = "attachment"
 
             except IndexError:
                 try:
-                    url = self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][1]
+                    url = self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)][1]
 
                     if url is None:
                         raise KeyError
@@ -105,7 +97,7 @@ class Commands(Cog):
                     return
 
         try:
-            dummy = await chan.create_webhook(name=author.display_name)
+            dummy = await ctx.channel.create_webhook(name=ctx.author.display_name)
             await dummy.send(embed=Embed(
                 title="Success",
                 description=f"Vanity successfully created using {mode}.\n"
@@ -122,60 +114,37 @@ class Commands(Cog):
                 color=0xff0000))
 
         else:
-            if str(guild.id) not in self.bot.user_data["VanityAvatars"]:
-                self.bot.user_data["VanityAvatars"].update({str(guild.id): dict()})
-
-            if str(author.id) not in self.bot.user_data["VanityAvatars"][str(guild.id)]:
-                self.bot.user_data["VanityAvatars"][str(guild.id)].update(
-                    {str(author.id): [None, None, False, True]})
-
-            if self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][0] is None:
-                self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)] = [
-                    url, url,
-                    self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][2],
-                    self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][3]]
+            if str(ctx.guild.id) not in self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"]:
+                self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)] = [url, url]
 
             else:
-                self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)] = [
-                    url, self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][0],
-                    self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][2],
-                    self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][3]
-                ]
+                self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)] = [
+                    url, self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)][0]]
                 
             print(
                 f'+ SET/CHANGED vanity avatar for user '
-                f'\"{ctx.author}\" in server "{ctx.guild.name}".'
-            )
+                f'{ctx.author} ({ctx.author.id}) in server {ctx.guild.name} ({ctx.guild.id}).')
 
     @command(aliases=["remove"])
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def remove_vanity(self, ctx: Context):
-
-        guild = ctx.guild
-        author = ctx.author
-
-        if not guild:
+        if not ctx.guild:
             return await ctx.send(embed=Embed(
                 title="Error",
                 description="This command cannot be used in a DM channel. Consider "
                             "using it in a private channel in one of your servers.",))
         
-        if str(guild.id) in self.bot.user_data["VanityAvatars"] and \
-            str(author.id) in self.bot.user_data["VanityAvatars"][str(guild.id)] and \
-            self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][0]:
-            self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)] = [
-                None,
-                self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][0],
-                self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][2],
-                self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][3]]
+        if str(ctx.guild.id) in self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"]:
+            self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)] = [
+                None, self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)][0]]
 
             await ctx.send(embed=Embed(
                 title="Success",
                 description="Removed vanity."))
             
             print(
-                f'- REMOVED vanity avatar for user \"{ctx.author}\" '
-                f'in server "{ctx.guild.name}".')
+                f'- REMOVED vanity avatar for user '
+                f'{ctx.author} ({ctx.author.id}) in server {ctx.guild.name} ({ctx.guild.id}).')
 
         else:
             await ctx.send(embed=Embed(
@@ -186,77 +155,50 @@ class Commands(Cog):
     @command()
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def current(self, ctx: Context, user: User, standard: str = None):
-
-        guild = ctx.guild
-        author = ctx.author
-
         if standard not in ["standard", "standard_url"]:
             standard = None
 
-        if not guild:
+        if not ctx.guild:
             return await ctx.send(embed=Embed(
                 title="Error",
                 description="This command cannot be used in a DM channel. Consider "
                             "using it in a private channel in one of your servers."))
         
         if user.id == self.bot.user.id:
-            print(f"[] Sent bot's avatar url to user \"{author}\".")
-            return await ctx.send(embed=Embed(
+            print(f"[] Sent bot's avatar url to user \"{ctx.author}\".")
+            await ctx.send(embed=Embed(
                 title="Ram's Avatar",
                 description="My avatar is located here:",
             ).set_image(url=self.bot.user.avatar_url))
-        
+            return
+
         else:
             async def show_standard():
-                if (str(user.avatar_url).endswith(".webp") or str(user.avatar_url).endswith(".webp?size=1024")) and standard != "standard_url":
-                    r = get(user.avatar_url, allow_redirects=True)                  # Compatibility for mobile devices unable
-                    with open(f"{self.bot.cwd}/avatar{user.id}.webp", "wb") as f:   # to render .webp files, especially iOS
-                        f.write(r.content)
+                await ctx.send(embed=Embed(
+                    title=f"{user}'s Standard Avatar",
+                    description="Their current standard avatar is here:"
+                ).set_image(url=user.avatar_url))
+                
+                print(
+                    f'[] Sent standard avatar url for {user} ({user.id}'
+                    f' to user {ctx.author} ({ctx.author.id}).')
+                
+                return
 
-                    im = Image.open(f"{self.bot.cwd}/avatar{user.id}.webp")
-                    im.save(f"{self.bot.cwd}/avatar{user.id}.png", format="PNG")
-                    file = File(f"{self.bot.cwd}/avatar{user.id}.png")
-                    im.close()
-
-                    print(
-                        f'[] Sent standard avatar url for \"{user}\"'
-                        f' to user \"{author}\".'
-                    )
-
-                    await ctx.send(embed=Embed(
-                        title=f"{user}'s Standard Avatar",
-                        description="Their current standard avatar is here:"))
-                    await ctx.send(file=file)
-
-                    remove(f"{self.bot.cwd}/avatar{user.id}.webp")
-                    remove(f"{self.bot.cwd}/avatar{user.id}.png")
-
-                    return
-
-                else:
-                    print(
-                        f'[] Sent standard avatar url for \"{user}\"'
-                        f' to user \"{author}\".')
-
-                    await ctx.send(embed=Embed(
-                        title=f"{user}'s Standard Avatar",
-                        description="Their current standard avatar url is located here:",
-                    ).set_image(url=user.avatar_url))
-
-                    return
 
             if not standard:
-                if str(guild.id) in self.bot.user_data["VanityAvatars"] and user.id in self.bot.user_data["VanityAvatars"][str(guild.id)] and self.bot.user_data["VanityAvatars"][str(guild.id)][user.id][0]:
-
-                    print(
-                        f'[] Sent vanity avatar url for \"{user}\"'
-                        f' to user \"{author}\".')
+                if str(ctx.guild.id) in self.bot.user_data["UserData"][str(user.id)]["VanityAvatars"] and \
+                    self.bot.user_data["UserData"][str(user.id)]["VanityAvatars"][str(ctx.guild.id)][0]:
 
                     return await ctx.channel.send(embed=Embed(
                         title=f"Vanity Avatar: {user}",
                         description="Their current vanity avatar is located here:\n",
-                    ).set_image(url=self.bot.user_data['VanityAvatars'][str(guild.id)][user.id][0]))
+                    ).set_image(url=self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)][0]))
 
+                    print(
+                        f'[] Sent vanity avatar url for {user} ({user.id}'
+                        f' to user {ctx.author} ({ctx.author.id}).')
+                
                 else:
                     await show_standard()
 
@@ -274,6 +216,7 @@ class Commands(Cog):
                 ).set_image(url=url),
                 avatar_url=url)
             return await dummy.delete()
+        
         except Exception as e:
             return await ctx.send(embed=Embed(
                 title="URL Error",
@@ -286,38 +229,32 @@ class Commands(Cog):
     @command(aliases=["toggle_x", "quick_del"])
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def toggle_quick_delete(self, ctx):
-        guild = ctx.guild
-        author = ctx.author
-        if str(guild.id) in self.bot.user_data["VanityAvatars"] and str(author.id) in self.bot.user_data["VanityAvatars"][str(guild.id)]:
-            self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][3] = not self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][3]
-            symbol = self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][3]
-            if symbol:
-                symbol = "✅"
-            elif not symbol:
-                symbol = "❎"
+        self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["QuickDelete"] = \
+            not self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["QuickDelete"]
+        
+        symbol = self.bot.user_data["UserData"][str(ctx.author.id)]["Settings"]["QuickDelete"]
+        if symbol:
+            symbol = "✅"
+        elif not symbol:
+            symbol = "❎"
 
-            await ctx.send(embed=Embed(
-                title="Quick delete",
-                description=f"{symbol} Quick delete toggled!\n"))
-        else:
-            await ctx.send(embed=Embed(
-                title="Error",
-                description="You can't use this feature until you have created your vanity for the first time here.",
-                color=0xff0000))
+        await ctx.send(embed=Embed(
+            title="Quick delete",
+            description=f"{symbol} Quick delete toggled!\n"))
 
     # BLACKLISTING
     @command(aliases=["bl"])
     @bot_has_permissions(send_messages=True, embed_links=True)
-    async def blacklist(self, ctx: Context, mode: str, item: str = None):
+    async def blacklist(self, ctx: Context, mode: str = "view", item: str = None):
         if not ctx.guild:
             return await ctx.send(embed=Embed(
                 title="Error",
-                description="This command cannot be used in a DM channel. "
-                "Consider using it in a private channel in one of your servers.",
+                description="This command cannot be used in a DM channel.\n"
+                            "Consider using it in a private channel in one of your servers.",
                 color=0xff0000))
         
-        channeladd = ["channel-add", "ch-a"]  # TODO: Maybe `blacklist` should be `group` with `mode`s as subcommands.
-        channelremove = ["channel-remove", "ch-r"]  # TODO: Ask me about this.
+        channeladd = ["channel-add", "ch-a"]
+        channelremove = ["channel-remove", "ch-r"]
         prefixadd = ["prefix-add", "pf-a"]
         prefixremove = ["prefix-remove", "pf-r"]
 
@@ -334,49 +271,42 @@ class Commands(Cog):
 
             try:
                 item = int(item)
-
             except ValueError:
                 await ctx.send(embed=Embed(
                     title="Error",
-                    description="`item` for mode `channel-add` needs to be a number and proper channel ID. You can also #mention the channel.\n"
+                    description="`item` for mode `channel-add` needs to be a number and proper channel ID.\n"
                                 "See `var:help Commands` under `var:blacklist` "
-                                "to see how to get channel ID.",
+                                "to see how to get channel ID. You can also #mention the channel.",
                     color=0xff0000))
                 
                 return
 
             else:
-                try:
-                    channel = self.bot.get_channel(item)
-                except NotFound:
+                channel = self.bot.get_channel(item)
+                if not channel:
                     await ctx.send(embed=Embed(
                         title="Error",
                         description="No channel with that ID exists.\n"
                                     "See `var:help commands` under `var:blacklist` "
-                                    "to see how to get channel IDs.\nYou can also #mention the channel.",
+                                    "to see how to get channel IDs. You can also #mention the channel.",
                         color=0xff0000))
 
                 else:
-                    if str(ctx.author.id) not in self.bot.user_data["Blacklists"].keys():
-                        self.bot.user_data["Blacklists"][str(ctx.author.id)] = ([True], [True])
-
-                    if item not in self.bot.user_data["Blacklists"][str(ctx.author.id)][0]:
-                        self.bot.user_data["Blacklists"][str(ctx.author.id)][0].append(item)
+                    if item not in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][0]:
+                        self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][0].append(item)
                         
                         if here:
                             await ctx.send(embed=Embed(
                                 title="Success",
-                                description=f'Channel "{channel.name}" in server "{channel.guild.name}" '
-                                            f'(here) was blacklisted for you.\nYou can still use bot commands here.'))
+                                description=f'{channel.mention} (here) was blacklisted for you.\nYou can still use bot commands here.'))
 
                         elif not here:
                             await ctx.send(embed=Embed(
                                 title="Success",
-                                description=f'Channel "{channel.name}" in server "{channel.guild.name}" '
-                                            f'was blacklisted for you.\nYou can still use bot commands there.'))
-                            
-                        print(f'+ Channel "{channel.name}" in server "{channel.guild.name}" '
-                              f'was blacklisted for \"{ctx.author}\".')
+                                description=f'{channel.mention} (here) was blacklisted for you.\nYou can still use bot commands here.'))
+
+                        print(f'+ Channel "{channel.name}" ({channel.id}) '
+                              f'was blacklisted for {ctx.author} ({ctx.author.id}).')
                         
                     else:
                         if not here:
@@ -416,41 +346,32 @@ class Commands(Cog):
                     color=0xff0000))
 
             else:
-                if str(ctx.author.id) in self.bot.user_data["Blacklists"].keys():
-                    if item in self.bot.user_data["Blacklists"][str(ctx.author.id)][0]:
-                        self.bot.user_data["Blacklists"][str(ctx.author.id)][0].remove(item)
-                        channel = self.bot.get_channel(item)
-                        await ctx.send(embed=Embed(
-                            title="Success",
-                            description=f'Channel "{channel.name}" in server "{channel.guild.name}" '
-                                        f'was removed from your blacklist.'))
-                        
-                        print(f'- Channel "{channel.name}" in server "{channel.guild.name}" '
-                              f'was removed from blacklisted items for user \"{ctx.author}\".')
-                    
-                    else:
-                        if not here:
-                            await ctx.send(embed=Embed(
-                                title="Error",
-                                description="That channel isn't in your blacklist.\n"
-                                            "Type `var:see_blacklists` to see your "
-                                            "blacklisted channels and prefixes.",
-                                color=0xff0000))
-
-                        elif here:
-                            await ctx.send(embed=Embed(
-                                title="Error",
-                                description="This channel isn't in your blacklist.\n"
-                                            "Type `var:see_blacklists` to see your "
-                                            "blacklisted channels and prefixes.",
-                                color=0xff0000))
-                        
-                        return
-                else:
+                if item in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][0]:
+                    self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][0].remove(item)
+                    channel = self.bot.get_channel(item)
                     await ctx.send(embed=Embed(
-                        title="Error",
-                        description="You have nothing to remove from your blacklist.",
-                        color=0xff0000))
+                        title="Success",
+                        description=f'{channel.mention} was removed from your blacklist.'))
+                    
+                    print(f'- Channel "{channel.name}" ({channel.id}) '
+                          f'was unblacklisted for {ctx.author} ({ctx.author.id}).')
+                
+                else:
+                    if not here:
+                        await ctx.send(embed=Embed(
+                            title="Error",
+                            description="That channel isn't in your blacklist.\n"
+                                        "Type `var:see_blacklists` to see your "
+                                        "blacklisted channels and prefixes.",
+                            color=0xff0000))
+
+                    elif here:
+                        await ctx.send(embed=Embed(
+                            title="Error",
+                            description="This channel isn't in your blacklist.\n"
+                                        "Type `var:see_blacklists` to see your "
+                                        "blacklisted channels and prefixes.",
+                            color=0xff0000))
                     
                     return
 
@@ -461,16 +382,14 @@ class Commands(Cog):
                     description="Your prefix can only be up to 5 characters long.",
                     color=0xff0000))
 
-            if ctx.author.id not in self.bot.user_data["Blacklists"].keys():
-                self.bot.user_data["Blacklists"][str(ctx.author.id)] = ([True], [True])
-
-            if item not in self.bot.user_data["Blacklists"][str(ctx.author.id)][1]:
-                self.bot.user_data["Blacklists"][str(ctx.author.id)][1].append(item)
+            if item not in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][1]:
+                self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][1].append(item)
                 await ctx.send(embed=Embed(
                     title="Success",
                     description=f'Added "{item}" to blacklisted prefixes for you.'))
 
-                print(f'+ Added "{item}" to blacklisted prefixes for user \"{ctx.author}\"')
+                print(f'+ Added "{item}" to blacklisted prefixes for user {ctx.author} ({ctx.author.id}).')
+            
             else:
                 await ctx.send(embed=Embed(
                     title="Error",
@@ -478,42 +397,25 @@ class Commands(Cog):
                     color=0xff0000))
 
         elif mode in prefixremove:
-            if str(ctx.author.id) in self.bot.user_data["Blacklists"].keys():
-                if item in self.bot.user_data["Blacklists"][str(ctx.author.id)][1]:
-                    self.bot.user_data["Blacklists"][str(ctx.author.id)][1].remove(item)
-                    await ctx.send(embed=Embed(
-                        title="Success",
-                        description=f'Removed "{item}" from blacklisted prefixes for you.'))
+            if item in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][1]:
+                self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][1].remove(item)
+                await ctx.send(embed=Embed(
+                    title="Success",
+                    description=f'Removed "{item}" from blacklisted prefixes for you.'))
 
-                    print(f'- Removed "{item}" from blacklisted prefixes for user \"{ctx.author}\".')
+                print(f'- Removed "{item}" from blacklisted prefixes for user {ctx.author} ({ctx.author.id}).')
 
-                    return
-                else:
-                    return await ctx.send(embed=Embed(
-                        title="Error",
-                        description=f"`{item}` isn't in your blacklist.\n"
-                                    f"Type `var:see_blacklists` to see your "
-                                    f"blacklisted channels and prefixes.",
-                        color=0xff0000))
-            
+                return
             else:
                 return await ctx.send(embed=Embed(
                     title="Error",
-                    description="You have nothing to remove from your blacklist.",
+                    description=f"`{item}` isn't in your blacklist.\n"
+                                f"Type `var:see_blacklists` to see your "
+                                f"blacklisted channels and prefixes.",
                     color=0xff0000))
 
-        else:
-            await ctx.send(embed=Embed(
-                title="Argument Error",
-                description=f'Invalid mode passed: `{mode}`; Refer to `var:help commands blacklist`.',
-                color=0xff0000))
-
-    # ------------------------------------------------------------------------------------------------------------------
-    @command(aliases=["see_bl"])
-    @bot_has_permissions(send_messages=True, embed_links=True)
-    async def see_blacklists(self, ctx: Context):
-        if str(ctx.author.id) in self.bot.user_data["Blacklists"].keys():
-            if self.bot.user_data["Blacklists"][str(ctx.author.id)] == (['0'], ['0']):
+        elif mode == "view":
+            if self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"] == ([], []):
                 return await ctx.send(embed=Embed(
                     title="Error",
                     description="You haven't blacklisted anything yet.",
@@ -523,46 +425,45 @@ class Commands(Cog):
 
             async def render():
                 message_part.append("Here are your blacklisted items:\n")
-                if len(self.bot.user_data["Blacklists"][str(ctx.author.id)][0]):
+                if len(self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][0]):
                     message_part.append("**Channels:**\n")
-                    for n in self.bot.user_data["Blacklists"][str(ctx.author.id)][0]:
+                    for n in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][0]:
                         try:
-                            channel = self.bot.get_channel(n)
+                            channel = await self.bot.fetch_channel(n)
                         except NotFound:
-                            self.bot.user_data["Blacklists"][str(ctx.author.id)][0].remove(n)
+                            self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][0].remove(n)
                             return False
                         else:
                             message_part.append(
-                                f"-- Server: `{channel.guild.name}`; Name: {channel.mention}; ID: {channel.id}\n")
+                                f"-- {channel.mention} ({channel.id})\n")
                             
                     return True
 
             while True:
                 result = await render()
-                if result is False:
-                    message_part = list()
-                    message_part.append("Here are your blacklisted items:\n```")
+                if not result:
+                    message_part = []
                     continue
                 else:
                     break
 
-            if not len(self.bot.user_data["Blacklists"][str(ctx.author.id)][1]) == 0:
+            if not len(self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][1]) == 0:
                 message_part.append("**Prefixes:**\n")
-                for i in self.bot.user_data["Blacklists"][str(ctx.author.id)][1]:
-                    message_part.append(f'-- `"{i}"`\n')
+                for i in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][1]:
+                    message_part.append(f'-- `{i}`\n')
 
             message_full = ''.join(message_part)
             await ctx.send(embed=Embed(
                 tile="Blacklist",
                 description=message_full))
-            
+
+            print(f'[] Sent blacklisted items for user {ctx.author} ({ctx.author.id}).')
+
         else:
             await ctx.send(embed=Embed(
-                title="Error",
-                description="You haven't blacklisted anything yet.",
+                title="Argument Error",
+                description=f'Invalid mode passed: `{mode}`; Refer to `var:help commands blacklist`.',
                 color=0xff0000))
-
-        print(f'[] Sent blacklisted items for user \"{ctx.author}\".')
 
     # CLOSETS
     @command(aliases=["cl_add"])
@@ -585,21 +486,25 @@ class Commands(Cog):
                 description="This command cannot be used in a DM channel. "
                             "Consider using it in a private channel in one of your servers.",
                 color=0xff0000))
+        
+        # Small utility
+        def check_vanity():
+            if str(ctx.guild.id) not in self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"]:
+                return None
+            
+            return self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)][0]
 
-        if not ctx.message.attachments and \
-                not self.bot.user_data["VanityAvatars"][str(ctx.guild.id)][str(ctx.author.id)][0]:
-            return await ctx.send(embed=Embed(
+        if not ctx.message.attachments and not check_vanity():
+            await ctx.send(embed=Embed(
                 title="Error",
-                description="You don't have a vanity equipped.\n"
-                            "You can attach a file to add without a vanity.",
+                description="You need to equip a vanity avatar or attach an image.",
                 color=0xff0000))
 
+            return
+        
         else:
             try:
-                if str(ctx.author.id) not in self.bot.user_data["Closets"].keys():
-                    self.bot.user_data["Closets"][str(ctx.author.id)] = {}
-
-                if name in self.bot.user_data["Closets"][str(ctx.author.id)].keys():
+                if name in self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].keys():
                     return await ctx.send(embed=Embed(
                         title="Error",
                         description=f"A closet entry with that name already exists.\n"
@@ -607,7 +512,7 @@ class Commands(Cog):
                                     f"`var:see_closet`.",
                         color=0xff0000))
 
-                if len(self.bot.user_data["Closets"][str(ctx.author.id)].keys()) >= 10:
+                if len(self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].keys()) >= 10:
                     return await ctx.send(embed=Embed(
                         title="Error",
                         description="You've reached (or somehow exceeded) the max "
@@ -623,25 +528,25 @@ class Commands(Cog):
 
                 if ctx.message.attachments:
                     url = ctx.message.attachments[0].url
-                    self.bot.user_data["Closets"][str(ctx.author.id)].update({name: url})
+                    self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].update({name: url})
                     return await ctx.send(embed=Embed(
                         title="Success",
                         description=f"Added attached file to your closet with name `{name}`."))
 
-                elif self.bot.user_data["VanityAvatars"][str(ctx.guild.id)][str(ctx.author.id)][0] is not None:
-                    url = self.bot.user_data["VanityAvatars"][str(ctx.guild.id)][str(ctx.author.id)][0]
-                    self.bot.user_data["Closets"][str(ctx.author.id)].update({name: url})
+                elif self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)][0]:
+                    url = self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)][0]
+                    self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].update({name: url})
                     
                     return await ctx.send(embed=Embed(
                         title="Success",
                         description=f"Added current vanity avatar to closet with name `{name}`."))
 
             except KeyError or IndexError:
-                self.bot.user_data["Closets"][str(ctx.author.id)] = {}
+                self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"] = {}
 
                 try:
-                    self.bot.user_data["Closets"][str(ctx.author.id)].update(
-                        {name: self.bot.user_data["VanityAvatars"][str(ctx.guild.id)][str(ctx.author.id)][0]})
+                    self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].update(
+                        {name: self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)][0]})
                 
                 except IndexError or KeyError:
                     return await ctx.send(embed=Embed(
@@ -670,27 +575,24 @@ class Commands(Cog):
                             "If you just now voted, wait a few moments.",
                 color=0xff0000))
         
-        if str(ctx.author.id) not in self.bot.user_data["Closets"].keys():
-            self.bot.user_data["Closets"][str(ctx.author.id)] = {}
-
         try:
-            if name not in self.bot.user_data["Closets"][str(ctx.author.id)].keys():
+            if name not in self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].keys():
                 return await ctx.send(embed=Embed(
                     title="Name Error",
                     description=f"A closet entry with the name `{name}` doesn't exist.\n"
-                                f"See your closet entries with this command: "
+                                f"View your closet entries with this command: "
                                 f"`var:see_closet`.",
                     color=0xff0000))
 
             else:
-                self.bot.user_data["Closets"][str(ctx.author.id)].pop(name)
+                self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].pop(name)
 
         except KeyError:
-            self.bot.user_data["Closets"][str(ctx.author.id)] = dict()
+            self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"] = dict()
             return await ctx.send(embed=Embed(
                 title="Name Error",
                 description=f"A closet entry with the name `{name}` doesn't exist.\n"
-                            f"See your closet entries with this command: "
+                            f"View your closet entries with this command: "
                             f"`var:see_closet`.",
                 color=0xff0000))
         
@@ -713,9 +615,6 @@ class Commands(Cog):
                             "If you just now voted, wait a few moments.",
                 color=0xff0000))
         
-        if str(ctx.author.id) not in self.bot.user_data["Closets"].keys():
-            self.bot.user_data["Closets"][str(ctx.author.id)] = dict()
-            
         try:
             if len(rename) > 20:
                 return await ctx.send(embed=Embed(
@@ -729,7 +628,7 @@ class Commands(Cog):
                     description="Both names are the same.",
                     color=0xff0000))
 
-            elif name not in self.bot.user_data["Closets"][str(ctx.author.id)].keys():
+            elif name not in self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].keys():
                 return await ctx.send(embed=Embed(
                     title="Name Error",
                     description=f"A closet entry with the name `{name}` doesn't exist.\n"
@@ -737,7 +636,7 @@ class Commands(Cog):
                                 f"`var:see_closet`.",
                     color=0xff0000))
 
-            elif rename in self.bot.user_data["Closets"][str(ctx.author.id)].keys():
+            elif rename in self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].keys():
                 return await ctx.send(embed=Embed(
                     title="Name Error",
                     description=f"A closet entry with the name `{rename}` already exists.\n"
@@ -746,11 +645,11 @@ class Commands(Cog):
                     color=0xff0000))
 
             else:
-                orig_url = self.bot.user_data["Closets"][str(ctx.author.id)].pop(name)
-                self.bot.user_data["Closets"][str(ctx.author.id)].update({rename: orig_url})
+                orig_url = self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].pop(name)
+                self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].update({rename: orig_url})
 
         except KeyError:
-            self.bot.user_data["Closets"][str(ctx.author.id)] = dict()
+            self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"] = dict()
             return await ctx.send(embed=Embed(
                 title="Name Error",
                 description=f"A closet entry with with the name `{name}` doesn't exist.\n"
@@ -765,89 +664,38 @@ class Commands(Cog):
 
     @command(aliases=["cl", "closet"])
     @bot_has_permissions(send_messages=True, embed_links=True)
-    async def see_closet(self, ctx: Context, name: User = None):
-        if not name:
-            name = ctx.author
-            if str(name.id) not in self.bot.user_data["Closets"].keys():
-                self.bot.user_data["Closets"][str(name.id)] = {}
-
-            check = await self.bot.get_user_vote(name.id)
-                
-            if not check:
-                return await ctx.send(embed=Embed(
-                    title="Vote-Locked!",
-                    description="Closets are vote-locked. Please go to "
-                                "[Top.gg](https://top.gg/bot/687427956364279873/vote) and "
-                                "click on 'Vote'.\nThen come back and try again.\n"
-                                "If you just now voted, wait a few moments."))
-
-            message_part = list()
-            try:
-                message_part.append(
-                    f"Here is your closet. You can use these anywhere. Used "
-                    f"{len(self.bot.user_data['Closets'][str(name.id)].keys())}"
-                    f"/10 slots.```\n")
-                
-                if self.bot.user_data["Closets"][str(name.id)]:
-                    for i, url in self.bot.user_data["Closets"][str(name.id)].items():
-                        message_part.append(
-                            f"▛▚ Name: {i}\n"
-                            f"▙▞ URL: ({url})\n"
-                            f"\n")
-                else:
-                    raise KeyError
-                
-            except KeyError:
-                return await ctx.send(embed=Embed(
-                    title="Error",
-                    description="You have nothing in your closet.",
-                    color=0xff0000))
-
-        else:
-            if str(name.id) not in self.bot.user_data["Closets"].keys():
-                self.bot.user_data["Closets"][str(name.id)] = dict()
-    
-            check = await self.bot.get_user_vote(name.id)
-
-            if not check:
-                return await ctx.send(embed=Embed(
-                    title="Vote-Locked!",
-                    description=f"Closets are vote-locked. Tell {name.name} to go to "
-                                f"[Top.gg](https://top.gg/bot/687427956364279873/vote) "
-                                f"and click on 'Vote'.\nThen come back and try again.\n"
-                                f"If you just now voted, wait a few moments.",
-                    color=0xff0000))
+    async def see_closet(self, ctx: Context):
         
-            message_part = list()
-            try:
-                message_part.append(
-                    f"Here is their closet. Used "
-                    f"{len(self.bot.user_data['Closets'][str(name.id)].keys())}"
-                    f"/10 slots.```\n")
-                
-                if self.bot.user_data["Closets"][str(name.id)] != dict():
-                    for i, url in self.bot.user_data["Closets"][str(name.id)].items():
-                        message_part.append(
-                            f"▛▚ Name: {i}\n"
-                            f"▙▞ URL: ({url})\n"
-                            f"\n")
+        check = await self.bot.get_user_vote(ctx.author.id)
+            
+        if not check:
+            return await ctx.send(embed=Embed(
+                title="Vote-Locked!",
+                description="Closets are vote-locked. Please go to "
+                            "[Top.gg](https://top.gg/bot/687427956364279873/vote) and "
+                            "click on 'Vote'.\nThen come back and try again.\n"
+                            "If you just now voted, wait a few moments."))
 
-                else:
-                    raise KeyError
-
-            except KeyError:
-                await ctx.send(embed=Embed(
-                    title="Error",
-                    description="They have nothing in their closet.",
-                    color=0xff0000))
-                return
-
-        message_part.append("```")
-        message = ''.join(message_part)
-
-        await ctx.send(embed=Embed(
-            title=f"{name}'s Closet",
-            description=message))
+        if not self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"]:
+            return await ctx.send(embed=Embed(
+                title="Error",
+                description="You have nothing in your closet.",
+                color=0xff0000))
+        
+        message_part = []
+        
+        for i, url in self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].items():
+            message_part.append(
+                f"▄ Name: {i}\n"
+                f"▀ URL: ({url})\n"
+                f"\n")
+        
+        return await ctx.send(embed=Embed(
+            title="Your Closet",
+            description=f"Here is your closet. You can use these anywhere. Used "
+                        f"[{len(self.bot.user_data['UserData'][str(ctx.author.id)]['Closet'].keys())}/10] slots.\n"
+                        f"```{newline.join(message_part)}```"
+        ))
 
     @command(aliases=["cl_preview", "cl_pv"])
     @bot_has_permissions(send_messages=True, embed_links=True, manage_webhooks=True)
@@ -863,18 +711,18 @@ class Commands(Cog):
                             "If you just now voted, wait a few moments.",
                 color=0xff0000))
 
-        if str(ctx.author.id) not in self.bot.user_data["Closets"].keys():
-            self.bot.user_data["Closets"][str(ctx.author.id)] = dict()
+        if str(ctx.author.id) not in self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].keys():
+            self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"] = dict()
 
         try:
-            if name in self.bot.user_data["Closets"][str(ctx.author.id)].keys():
+            if name in self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].keys():
                 dummy = await ctx.channel.create_webhook(name=ctx.author.display_name)
                 await dummy.send(embed=Embed(
                     title="Preview",
                     description=f"{self.bot.user.name}: Preview message.\n",
                     color=0xff87a3
-                ).set_image(url=self.bot.user_data['Closets'][str(ctx.author.id)][name]),
-                    avatar_url=self.bot.user_data["Closets"][str(ctx.author.id)][name])
+                ).set_image(url=self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"][name]),
+                    avatar_url=self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"][name])
                 return await dummy.delete()
 
             else:
@@ -898,25 +746,20 @@ class Commands(Cog):
     @bot_has_permissions(send_messages=True, embed_links=True)
     @has_permissions(manage_channels=True)
     async def server_blacklist(self, ctx: Context, mode: str, item: str = None):
-
-        guild = ctx.guild
-        author = ctx.author
-        chan = ctx.channel
-
-        if not guild:
+        if not ctx.guild:
             return await ctx.send(embed=Embed(
                 title="Error",
                 description="This command cannot be used in a DM channel. Consider using "
                             "it in a private channel in one of your servers.",
                 color=0xff0000))
 
-        channeladd = ["channel-add", "ch-a"]  # TODO: Make commands group
+        channeladd = ["channel-add", "ch-a"]
         channelremove = ["channel-remove", "ch-r"]
         prefixadd = ["prefix-add", "pf-a"]
         prefixremove = ["prefix-remove", "pf-r"]
 
-        if (not item) and (mode in channeladd or mode in channelremove):
-            item = str(chan.id)
+        if not item and (mode in channeladd or mode in channelremove):
+            item = str(ctx.channel.id)
         
         if mode in channeladd:
             if item.startswith("<#") and item.endswith(">"):
@@ -934,7 +777,7 @@ class Commands(Cog):
                     color=0xff0000))
 
             else:
-                channel = await self.bot.get_channel(item)
+                channel = await self.bot.fetch_channel(item)
 
                 if channel is None:
                     await ctx.send(embed=Embed(
@@ -943,7 +786,7 @@ class Commands(Cog):
                         color=0xff0000))
 
                 else:
-                    if channel not in guild.channels:
+                    if channel not in ctx.guild.channels:
                         return await ctx.send(embed=Embed(
                             title="Access Denied",
                             description="The channel has to be in this server. I wouldn't "
@@ -951,15 +794,11 @@ class Commands(Cog):
                                         "another server.",
                             color=0xff0000))
                     
-                    if guild.id not in self.bot.user_data["ServerBlacklists"]:
-                        self.bot.user_data["ServerBlacklists"][str(guild.id)] = (list(), list())
-
-                    if item not in self.bot.user_data["ServerBlacklists"][str(guild.id)][0]:
-                        self.bot.user_data["ServerBlacklists"][str(guild.id)][0].append(item)
+                    if item not in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
+                        self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].append(item)
                         print(
-                            f'+ Channel "{channel.name}" in server '
-                            f'"{channel.guild.name}" was server-blacklisted.'
-                        )
+                            f"+ Channel #{ctx.channel.name} ({ctx.channel.name}) was server-blacklisted by {ctx.author} ({ctx.author.id}).")
+
                         return await ctx.send(embed=Embed(
                             title="Success",
                             description=f'Channel "{channel.name}" in server '
@@ -987,36 +826,28 @@ class Commands(Cog):
                     description=f"`channel` needs to be a number and proper channel ID. Please #mention the channel instead.",
                     color=0xff0000))
 
-            if guild.id in self.bot.user_data["ServerBlacklists"]:
-                if item in self.bot.user_data["ServerBlacklists"][str(guild.id)][0]:
-                    self.bot.user_data["ServerBlacklists"][str(guild.id)][0].remove(item)
-                    channel = await self.bot.fetch_channel(item)
-                    print(
-                        f'- Channel "{channel.name}" in server '
-                        f'"{channel.guild.name}" was removed from '
-                        f'server-blacklisted items.'
-                    )
-                    return await ctx.send(embed=Embed(
-                        title="Success",
-                        description=f'Channel "{channel.name}" in server '
-                                    f'"{channel.guild.name}" was removed from your '
-                                    f'server\'s blacklist.',
-                        color=0xff87a3))
-
-                else:
-                    return await ctx.send(embed=Embed(
-                        title="Error",
-                        description=f"That channel isn't in your server's blacklist.\n"
-                                    f"Type `{self.bot.command_prefix}see_server_blacklists` "
-                                    f"to see your blacklisted channels "
-                                    f"and prefixes.",
-                        color=0xff0000))
+            if item in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].remove(item)
+                channel = await self.bot.fetch_channel(item)
+                print(
+                    f'- Channel "{channel.name}" in server '
+                    f'"{channel.guild.name}" was removed from '
+                    f'server-blacklisted items.'
+                )
+                return await ctx.send(embed=Embed(
+                    title="Success",
+                    description=f'Channel "{channel.name}" in server '
+                                f'"{channel.guild.name}" was removed from your '
+                                f'server\'s blacklist.',
+                    color=0xff87a3))
 
             else:
                 return await ctx.send(embed=Embed(
                     title="Error",
-                    description="You have nothing to remove from your server's "
-                                "blacklist yet.",
+                    description=f"That channel isn't in your server's blacklist.\n"
+                                f"Type `{self.bot.command_prefix}see_server_blacklists` "
+                                f"to see your blacklisted channels "
+                                f"and prefixes.",
                     color=0xff0000))
 
         elif mode in prefixadd:
@@ -1026,14 +857,10 @@ class Commands(Cog):
                     description="Your prefix can only be up to 5 characters long.",
                     color=0xff0000))
         
-            if guild.id not in self.bot.user_data["ServerBlacklists"]:
-                self.bot.user_data["ServerBlacklists"][str(guild.id)] = (list(), list())
-
-            if item not in self.bot.user_data["ServerBlacklists"][str(guild.id)][1]:
-                self.bot.user_data["ServerBlacklists"][str(guild.id)][1].append(item)
+            if item not in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1].append(item)
                 print(
-                    f'+ Added \"{item}\" to blacklisted prefixes for user '
-                    f'"{author}"'
+                    f"+ Added \"{item}\" to blacklisted prefixes for {ctx.author} ({ctx.author.id})."
                 )
                 return await ctx.send(embed=Embed(
                     title="Success",
@@ -1046,29 +873,22 @@ class Commands(Cog):
                     color=0xff0000))
 
         elif mode in prefixremove:
-            if guild.id in self.bot.user_data["ServerBlacklists"]:
-                if item in self.bot.user_data["ServerBlacklists"][str(guild.id)][1]:
-                    self.bot.user_data["ServerBlacklists"][str(guild.id)][1].remove(item)
-                    print(
-                        f'- Removed "{item}" from blacklisted prefixes for '
-                        f'user "{ctx.author}".'
-                    )
-                    return await ctx.send(embed=Embed(
-                        title="Success",
-                        description=f'Removed "{item}" from blacklisted prefixes for this server.'))
-
-                else:
-                    return await ctx.send(embed=Embed(
-                        title="Error",
-                        description=f"`{item}` isn't in your blacklist.\nType "
-                                    f"`{self.bot.command_prefix}see_server_blacklists` "
-                                    f"to see your blacklisted channels and prefixes.",
-                        color=0xff0000))
+            if item in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1].remove(item)
+                print(
+                    f'- Removed "{item}" from blacklisted prefixes for '
+                    f'user "{ctx.author}".'
+                )
+                return await ctx.send(embed=Embed(
+                    title="Success",
+                    description=f'Removed "{item}" from blacklisted prefixes for this server.'))
 
             else:
                 return await ctx.send(embed=Embed(
                     title="Error",
-                    description="You have nothing to remove from your blacklist.",
+                    description=f"`{item}` isn't in your blacklist.\nType "
+                                f"`{self.bot.command_prefix}see_server_blacklists` "
+                                f"to see your blacklisted channels and prefixes.",
                     color=0xff0000))
 
         else:
@@ -1093,7 +913,7 @@ class Commands(Cog):
         message_part = list()
 
         def render():
-            if self.bot.user_data["ServerBlacklists"][str(guild.id)] == (list(), list()):
+            if self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"] == (list(), list()):
                 message_part.append(
                     "You haven't blacklisted anything for this server yet.")
                 
@@ -1101,15 +921,15 @@ class Commands(Cog):
 
             message_part.append(
                 "Here are this server's blacklisted items:")
-            if len(self.bot.user_data["ServerBlacklists"][str(guild.id)][0]) != 0:
+            if len(self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]) != 0:
                 message_part.append("**Channels:**")
-                for c_id in self.bot.user_data["ServerBlacklists"][str(guild.id)][0]:
+                for c_id in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
                     channel = guild.get_channel(c_id)
                     if channel:
                         message_part.append(
                             f"-- Name: {channel.mention}; ID: {channel.id}")
                     else:
-                        self.bot.user_data["ServerBlacklists"][str(guild.id)][0].remove(i)
+                        self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].remove(i)
                         return False
 
                 return True
@@ -1123,9 +943,9 @@ class Commands(Cog):
             else:
                 break
 
-        if len(self.bot.user_data["ServerBlacklists"][str(guild.id)][1]) != 0:
+        if len(self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]) != 0:
             message_part.append("**Prefixes:**")
-            for i in self.bot.user_data["ServerBlacklists"][str(guild.id)][1]:
+            for i in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
                 message_part.append(f'-- `"{i}"`')
 
         message_full = "\n".join(message_part)
@@ -1141,21 +961,22 @@ class Commands(Cog):
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def list(self, ctx: Context):
         guild = ctx.guild
-        message = list()
-        if guild.id in self.bot.user_data["VanityAvatars"] and \
-                self.bot.user_data["VanityAvatars"][str(guild.id)] != dict():
+        message = []
+        if guild.id in self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(guild.id)] and \
+            self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(guild.id)]:
             message.append(
                 "Here are users using vanities in this server; "
                 "The list may contain members who have left:\n```")
 
             show_list = False
-            for u_id in self.bot.user_data["VanityAvatars"][str(guild.id)]:
-                user = self.bot.get_user(u_id)
-                if user and self.bot.user_data["VanityAvatars"][str(guild.id)][u_id][0]:
-                    message.append(
-                        f"{user} - URL: \n"
-                        f"{self.bot.user_data['VanityAvatars'][str(guild.id)][u_id][0]}\n\n")
-                    show_list = True
+            for u_id in self.bot.user_data["UserData"]:
+                if str(ctx.guild.id) in u_id["VanityAvatars"] and u_id["VanityAvatars"][0]:
+                    user = self.bot.get_user(u_id)
+                    if user:
+                        message.append(
+                            f"{user} - URL: \n"
+                            f"{self.bot.user_data['VanityAvatars'][str(guild.id)][u_id][0]}\n\n")
+                        show_list = True
 
             if not show_list:
                 return await ctx.send(embed=Embed(
@@ -1176,43 +997,40 @@ class Commands(Cog):
                 color=0xff0000))
 
     @bot_has_permissions(send_messages=True, embed_links=True)
-    @has_permissions(manage_nicknames=True)
+    @has_permissions(manage_messages=True)
     @command(aliases=["manage", "user"])
     async def manage_user(self, ctx: Context, mode: str, user: Member):
-
-        guild = ctx.guild
-        author = ctx.author
-        author_role = author.top_role
+        author_role = ctx.author.top_role
         
-        if not (guild.id in self.bot.user_data["VanityAvatars"] and
-                user.id in self.bot.user_data["VanityAvatars"][str(guild.id)]):
+        if str(user.id) not in self.bot.user_data["UserData"] or \
+            str(ctx.guild.id) not in self.bot.user_data["UserData"][str(user.id)]["VanityAvatars"]:
             return await ctx.send(embed=Embed(
                 title="Error",
                 description="That user has no information linked with this server.",
                 color=0xff0000))
 
-        if user.id == author.id and author.id != guild.owner.id:
+        if user == ctx.author and ctx.author.id != ctx.guild.owner_id:
             return await ctx.send(embed=Embed(
                 title="Error",
                 description="You cannot use this command on yourself.",
                 color=0xff0000))
 
-        if author.id != guild.owner.id and guild.id in self.bot.user_data["VanityAvatars"] and author.id \
-                in self.bot.user_data["VanityAvatars"][str(guild.id)] and \
-                self.bot.user_data["VanityAvatars"][str(guild.id)][str(author.id)][2]:
+        if ctx.author.id != ctx.guild.owner_id and \
+            ctx.guild.id in self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)] and \
+            ctx.author.id in self.bot.user_data["GuildData"][str(ctx.guild.id)]["BlockedUsers"]:
             return await ctx.send(embed=Embed(
                 title="Permission Error",
                 description="You cannot use this command because you were blocked "
                             "from using vanity avatars by another user.",
                 color=0xff0000))
 
-        if user is None:
+        if not user:
             return await ctx.send(embed=Embed(
                 title="Error",
                 description="That user is not a part of this server or does not exist.",
                 color=0xff0000))
 
-        if author != guild.owner and author_role <= user.top_role:
+        if ctx.author.id != ctx.guild.owner_id and author_role <= user.top_role:
             return await ctx.send(embed=Embed(
                 title="Permission Error",
                 description="You cannot manage this user because they have an "
@@ -1220,28 +1038,30 @@ class Commands(Cog):
                 color=0xff0000))
 
         if mode == "block":
-            if self.bot.user_data["VanityAvatars"][str(guild.id)][user.id][2]:
+            if user.id in self.bot.user_data["GuildData"][str(ctx.guild.id)]["BlockedUsers"]:
                 return await ctx.send(embed=Embed(
                     title="Error",
                     description="That user is already blocked.",
                     color=0xff0000))
 
             else:
-                self.bot.user_data["VanityAvatars"][str(guild.id)][user.id][0] = None
-                self.bot.user_data["VanityAvatars"][str(guild.id)][user.id][2] = True
+                self.bot.user_data["UserData"][str(user.id)]["VanityAvatars"][str(ctx.guild.id)][1] = \
+                    self.bot.user_data["UserData"][str(user.id)]["VanityAvatars"][str(ctx.guild.id)][0]
+                self.bot.user_data["UserData"][str(user.id)]["VanityAvatars"][str(ctx.guild.id)][0] = None
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["BlockedUsers"].append(user.id)
                 return await ctx.send(embed=Embed(
                     title="Success",
                     description="User vanity avatar removed and blocked for this server."))
 
         elif mode == "unblock":
-            if not self.bot.user_data["VanityAvatars"][str(guild.id)][user.id][2]:
+            if not user.id in self.bot.user_data["GuildData"][str(ctx.guild.id)]["BlockedUsers"]:
                 return await ctx.send(embed=Embed(
                     title="Error",
                     description="That user is already unblocked.",
                     color=0xff0000))
 
             else:
-                self.bot.user_data["VanityAvatars"][str(guild.id)][user.id][2] = False
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["BlockedUsers"].remove(user.id)
                 return await ctx.send(embed=Embed(
                     title="Success",
                     description="User unblocked for this server."))
@@ -1249,10 +1069,50 @@ class Commands(Cog):
         elif mode == "get_info":
             return await ctx.send(embed=Embed(
                 title="Info",
-                description=f"**Vanity status for user {str(user)}:**\n"
-                            f"Vanity url: {self.bot.user_data['VanityAvatars'][str(guild.id)][user.id][0]}\n"
-                            f"Previous url: {self.bot.user_data['VanityAvatars'][str(guild.id)][user.id][1]}\n"
-                            f"Is blocked:  {self.bot.user_data['VanityAvatars'][str(guild.id)][user.id][2]}"))
+                description=f'__**Vanity status for user {str(user)}:**__\n'
+                            f'Vanity url: {self.bot.user_data["UserData"][str(user.id)]["VanityAvatars"][str(ctx.guild.id)][0]}\n'
+                            f'Previous url: {self.bot.user_data["UserData"][str(user.id)]["VanityAvatars"][str(ctx.guild.id)][1]}\n'
+                            f'Is blocked:  {user.id in self.bot.user_data["GuildData"][str(ctx.guild.id)]["BlockedUsers"]}'))
+
+    @see_blacklists.before_invoke
+    @see_closet.before_invoke
+    @see_server_blacklists.before_invoke
+    async def placeholder_remove(self, ctx):
+        if ctx.command.name == "see_blacklists":
+            if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][0]:
+                self.bot.user_data['UserData'][str(ctx.author.id)]['Blacklists'][0].remove(0)
+            if "placeholder" in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][1]:
+                self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][1].remove("placeholder")
+        
+        if ctx.command.name == "see_closet":
+            if "placeholder" in self.bot.user_data['UserData'][str(ctx.author.id)]["Closet"].keys():
+                self.bot.user_data['UserData'][str(ctx.author.id)]["Closet"].pop("placeholder")
+        
+        if ctx.guild and ctx.command.name == "see_server_blacklists":
+            if 0 in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].remove(0)
+            if "placeholder" in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1].remove("placeholder")
+    
+    @see_blacklists.after_invoke
+    @see_closet.after_invoke
+    @see_server_blacklists.after_invoke
+    async def placeholder_add(self, ctx):
+        if ctx.command.name == "see_blacklists":
+            if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][0]:
+                self.bot.user_data['UserData'][str(ctx.author.id)]['Blacklists'][0].append(0)
+            if "placeholder" not in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][1]:
+                self.bot.user_data['UserData'][str(ctx.author.id)]['Blacklists'][1].append("placeholder")
+        
+        if ctx.command.name == "see_closet":
+            if "placeholder" not in self.bot.user_data['UserData'][str(ctx.author.id)]["Closet"].keys():
+                self.bot.user_data['UserData'][str(ctx.author.id)]["Closet"]["placeholder"] = "placeholder"
+        
+        if ctx.guild and ctx.command.name == "see_server_blacklists":
+            if 0 not in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].append(0)
+            if "placeholder" not in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1].append("placeholder")
 
 def setup(bot):
     bot.add_cog(Commands(bot))

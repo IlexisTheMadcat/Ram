@@ -27,7 +27,6 @@ INT_FROM_EID = {
     b'\xe2\x80\x89'.decode(): 9     # " "
 }
 
-
 def get_engraved_id_from_msg(content: str) -> Optional[int]:
     try:
         if not content.endswith(EID_FROM_INT[10]):
@@ -45,10 +44,12 @@ def get_engraved_id_from_msg(content: str) -> Optional[int]:
 
     except IndexError:
         return
+    
+    except ValueError:
+        return
 
     else:
         return engraved_id
-
 
 def create_engraved_id_from_user(u_id: int) -> Optional[str]:
     engraved_id_parts = list()
