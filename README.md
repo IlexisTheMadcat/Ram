@@ -21,7 +21,8 @@ Removes your vanity avatar
 ```
 **Actions:**\
 React to a message with "❌" to delete a vanity message.\
-React to a message with "❓" to recieve a DM telling you the real user who sent it.
+React to a message with "❓" to recieve a DM telling you the real user who sent it.\
+React to a message with "📝" to edit that message.
 
 With a vanity equipped, send a message anywhere in a specific server to transform your message into your new avatar.
 
@@ -114,18 +115,18 @@ Preview how your image will appear as the vanity icon.\
 This feature-set allows you to block Ram from transforming your message if it is in a certain channel or starts with a certain prefix.
 
 ### BLACKLIST; Aliases: "bl"
-`vara:blacklist [mode] [item]`\
+`var:blacklist [mode] [item]`\
 **--------------------------------------------------**\
-You have the option to blacklist channels from transforming your messages.\
+You have the option to blacklist channels and prefixes from transforming your messages.\
 **--** `mode` can be "view" (default) to show the blacklist, or one of the following to edit:\
 **----** `channal-add` or `ch-a` - add a channel to turn vanity avatars off for that channel.\
 **----** `channal-remove` or `ch-r` - remove a channel to turn vanity avatars back on for that channel.\
 **----** `prefix-add` or `pf-a` - add a prefix to prevent vanity messaages from appearing for messages starting with said prefix.\
-**----** `prefix-remove` or `pf-a` - remove a prefix to allow vanity messages to appear for messages starting with said prefix.\
+**----** `prefix-remove` or `pf-r` - remove a prefix to allow vanity messages to appear for messages starting with said prefix.\
 **--** `item` can be a channel ID (`[channal-add, channal-remove]`), or a prefix string (`[prefix-add, prefix-remove]`).\
 **----** `item` is required when using the modes `prefix-add` or `prefix-remove`.\
 **----** `item` is optional when using the modes `channel-add` or `channel-remove`. 
-**----** If left empty, `item` will be the channel you run the command in.
+**------** If left empty, `item` will be the channel you run the command in.
 
 *Sending a message in a channel that is in your blacklist will not transform it.*\
 *Sending a message starting with a prefix in your blacklist will not transform it.*
@@ -184,21 +185,15 @@ These are tied to your server's id.
 `var:server_blacklist <mode> [item]`\
 **--------------------------------------------------**\
 Members with the `Manage Server` permission can blacklist channels from transforming your messages for that server.\
-**--** "mode" can be one of the following:\
+**--** `mode` can be "view" (default) to show the blacklist, or one of the following to edit:\
 **----** `channal-add` or `ch-a` - add a channel to turn vanity avatars off for that channel.\
 **----** `channal-remove` or `ch-r` - remove a channel to turn vanity avatars back on for that channel.\
 **----** `prefix-add` or `pf-a` - add a prefix to prevent vanity messaages from appearing for messages starting with said prefix.\
-**----** `prefix-remove` or `pf-a` - remove a prefix to allow vanity messages to appear for messages starting with said prefix.\
-**--** `item` can be a channel ID `[channal-add, channal-remove]`, or a prefix string `[prefix-add, prefix-remove]`.\
+**----** `prefix-remove` or `pf-r` - remove a prefix to allow vanity messages to appear for messages starting with said prefix.\
+**--** `item` can be a channel ID (`[channal-add, channal-remove]`), or a prefix string (`[prefix-add, prefix-remove]`).\
 **----** `item` is required when using the modes `prefix-add` or `prefix-remove`.\
-**----** To get a channel ID, turn Developer Mode on in Discord, then right-click on the target channel and click "Copy ID".
-
-### SEE_BLACKLISTS; Aliases: "see_s_bl"
-This command functions very similar to the `var:see_blacklists` command.\
-It shows the blacklisted items for the *server,* which apply to everyone.
-`var:see_server_blacklists`\
-**--------------------------------------------------**\
-See all items that are blacklisted for the server the command is invoked in. These can be managed by members with the `Manage Server` permission.
+**----** `item` is optional when using the modes `channel-add` or `channel-remove`. 
+**------** If left empty, `item` will be the channel you run the command in.
 
 ### **LIST**
 `var:list`\

@@ -1,5 +1,5 @@
 # IMPORTS
-from asyncio import sleep
+from asyncio import sleep, TimeoutError
 from contextlib import suppress
 from sys import exc_info
 from copy import deepcopy
@@ -32,14 +32,30 @@ class Events(Cog):
     # --------------------------------------------------------------------------------------------------------------------------
     @Cog.listener()
     async def on_message(self, msg: Message):
-        verify_command = await self.bot.get_context(msg)
-
         # Cooldown
-        if msg.author.id in self.bot.global_cooldown: return
+        if msg.author.id in self.bot.global_cooldown or msg.author.id in self.bot.pause_on_message: return
         else: self.bot.global_cooldown.update({msg.author.id:"placeholder"})
         
-        # Don't respond to bots.
-        if msg.author.id == self.bot.user.id:
+        if msg.author.bot and msg.author.discriminator == "0000":
+            engravedid = get_engraved_id_from_msg(msg.content)
+            if engravedid:
+                eid_user = await self.bot.fetch_user(engravedid)
+                if eid_user:
+                    if self.bot.user_data["UserData"][str(eid_user.id)]["Settings"]["QuickDelete"]:
+                        with suppress(Forbidden):
+                            await msg.add_reaction("<:delete_message_icon:850772261773770782>")
+                        
+                        if not self.bot.user_data["UserData"][str(eid_user.id)]["Settings"]["NotificationsDue"]["QuickDeleteTip"]:
+                            with suppress(Forbidden):
+                                await eid_user.send(embed=Embed(
+                                    title="Quick Delete Notification",
+                                    description=self.bot.config["quick_delete_tip"]))
+                        
+                        self.bot.user_data["UserData"][str(eid_user.id)]["Settings"]["NotificationsDue"]["QuickDeleteTip"] = True
+
+                        await sleep(5)
+                        with suppress(NotFound):
+                            await msg.remove_reaction("<:delete_message_icon:850772261773770782>", msg.guild.me)
             return
 
         # If bot listing supports webhooks
@@ -49,7 +65,7 @@ class Events(Cog):
             voted_for = int(ids[1])
 
             if voted_for == self.bot.user.id:
-                user = await self.bot.get_user(voter)
+                user = await self.bot.fetch_user(voter)
                 if not user: return
 
                 try:
@@ -62,15 +78,23 @@ class Events(Cog):
                     print(f"[✅] {user} ({user.id} voted for \"{self.bot.user}\".")
 
                 return
+        
+        # Don't respond to bots.
+        if msg.author.bot:
+            return
 
+        verify_command = await self.bot.get_context(msg)
         if msg.guild and not verify_command.valid:
             # Self-Blacklisted
             try:
-                for i in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][1]:
+                for i in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][1]:
                     if msg.content.startswith(i):
                         return
 
-                if msg.channel.id in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][0]:
+                if msg.channel.id in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0]:
+                    return
+
+                if msg.channel.category and msg.channel.category.id in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0]:
                     return
 
             except KeyError:
@@ -83,6 +107,9 @@ class Events(Cog):
                         return
 
                 if msg.channel.id in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][0]:
+                    return
+                
+                if msg.channel.category and msg.channel.category.id in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][0]:
                     return
 
             except KeyError:
@@ -100,31 +127,11 @@ class Events(Cog):
                     continue
 
             try:
-                engravedid = get_engraved_id_from_msg(msg.content)
-                if engravedid:
-                    eid_user = await self.bot.fetch_user(engravedid)
-                    if eid_user:
-                        if self.bot.user_data["UserData"][str(eid_user.id)]["Settings"]["QuickDelete"]:
-                            with suppress(Forbidden):
-                                await msg.add_reaction("🗑")
-                            
-                            if not self.bot.user_data["UserData"][str(eid_user.id)]["Settings"]["NotificationsDue"]["QuickDeleteTip"]:
-                                with suppress(Forbidden):
-                                    await eid_user.send(embed=Embed(
-                                        title="Quick Delete Notification",
-                                        description=self.bot.config["quick_delete_tip"]))
-                            
-                            self.bot.user_data["UserData"][str(eid_user.id)]["Settings"]["NotificationsDue"]["QuickDeleteTip"] = True
-
-                            await sleep(5)
-                            with suppress(NotFound):
-                                await msg.remove_reaction("🗑", msg.guild.me)
-
                 if not msg.author.bot and self.bot.user_data["UserData"][str(msg.author.id)]["VanityAvatars"][str(msg.guild.id)][0]:
                     engravedid = create_engraved_id_from_user(msg.author.id)
 
                     if msg.content != "":
-                        new_content = f"{msg.content}  {engravedid}"
+                        new_content = f"{msg.content}{engravedid}"
                     else:
                         new_content = EID_FROM_INT[10] + engravedid
 
@@ -215,7 +222,9 @@ class Events(Cog):
         if user == self.bot.user:
             return
 
-        if str(payload.emoji) in ["❌", "🗑"]:
+        if str(payload.emoji) in ["❌", "<:delete_message_icon:850772261773770782>"] and \
+            ctx.author.bot and \
+            ctx.author.discriminator == "0000":
             engravedid = get_engraved_id_from_msg(message.content)
             if engravedid:
                 identification = await self.bot.fetch_user(engravedid)
@@ -228,27 +237,83 @@ class Events(Cog):
             # Check if the message belongs to the reaction user, or if they have `Manage Messages` permission.
             if (identification == user or permissions.manage_messages) and user.id != self.bot.user.id:
                 try:
-                    await self.bot.http.delete_message(
-                        channel.id,
-                        message.id,
-                        reason="Deleted on user request.")
+                    await ctx.message.delete()
+                    return
                 
                 except Forbidden:
                     with suppress(HTTPException, Forbidden):
-                        await self.bot.http.remove_reaction(
-                            channel.id,
-                            message.id,
-                            payload.emoji,
-                            user.id)
-                        
                         await user.send('If you want to do that, this bot needs the "Manage Messages" permission.')
+                        return
+        
+        elif str(payload.emoji) == "📝" and \
+            ctx.author.bot and \
+            ctx.author.discriminator == "0000":
+            userid = get_engraved_id_from_msg(message.content)
+            if userid:
+                identification = await self.bot.fetch_user(userid)
             else:
-                if user != self.bot.user:
-                    with suppress(Forbidden):
-                        await user.send(
-                            f"That's not your message to delete. "
-                            f"Ask {str(identification)} to delete it.\n"
-                            f"The reaction was left unchanged.")
+                return
+
+            webhooks = await ctx.channel.webhooks()
+            webhook = get(webhooks, id=self.bot.user_data["Webhooks"].get(str(ctx.channel.id)))
+            if not webhook:
+                return
+
+            # Check if the message belongs to the reaction user.
+            if identification == user and user.id != self.bot.user.id:
+                engravedid = create_engraved_id_from_user(identification.id)
+                original_content = ctx.message.content.strip(engravedid)
+                original_content = original_content.strip(EID_FROM_INT[10])
+
+                try:
+                    conf = await identification.send(embed=Embed(
+                        title=f"Editing Message",
+                        description=f"Server: {ctx.guild.name}\n"
+                                    f"Channel: {ctx.channel.mention}\n"
+                                    f"Original content to copy: ```{original_content}```"
+                    ).set_footer(text="Your next message you send here will edit the target message."))
+                
+                except Forbidden:
+                    conf = await ctx.send(embed=Embed(
+                        title=f"Editing Message",
+                        description=f"Server: {ctx.guild.name}\n"
+                                    f"Channel: {ctx.channel.mention}\n"
+                                    f"Original content to copy: ```{original_content}```"
+                    ).set_footer(text="Your next message you send here will edit the target message."))
+                
+                except Exception:
+                    return
+
+                while True:
+                    try:
+                        msg = await self.bot.wait_for("message", timeout=30, bypass_cooldown=True,
+                            check=lambda m: m.channel.id == conf.channel.id and \
+                                m.author.id == identification.id)
+
+                    except TimeoutError:
+                        await conf.edit(embed=Embed(
+                            title=f"Editing Message",
+                            description=f"Server: {ctx.guild.name}\n"
+                                        f"Channel: {ctx.channel.mention}\n"
+                                        f"Original content to copy: ```{original_content}```"
+                        ).set_footer(text="Timed out."))
+                        return
+
+                    else:
+                        if not msg.content or msg.content == original_content:
+                            continue
+
+                        await ctx.message.remove_reaction("📝", identification)
+                        await webhook.edit_message(ctx.message.id, content=f"{msg.content}{engravedid}")
+
+                        await conf.edit(embed=Embed(
+                            title=f"Editing Message",
+                            description=f"Server: {ctx.guild.name}\n"
+                                        f"Channel: {ctx.channel.mention}\n"
+                                        f"Original content to copy: ```{original_content}```\n"
+                                        f"New content: ```{msg.content}```"
+                        ).set_footer(text=Embed.Empty))
+                        return
 
         elif str(payload.emoji) == "❓" and \
             message.author.bot and \

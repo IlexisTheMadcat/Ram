@@ -23,8 +23,7 @@ class MiscCommands(Cog):
             embed_links=True,
             manage_messages=True,
             manage_webhooks=True,
-            add_reactions=True,
-            attach_files=True)
+            add_reactions=True)
 
         emb = Embed(
             description=f'[Click Here]({oauth_url(app_info.id, permissions)}) '
@@ -43,11 +42,16 @@ class MiscCommands(Cog):
         emb = Embed(
             title="<:info:818664266390700074> Help",
             description=f"""
+:information_source: **__NOTICE:__**
+**Ram has been superceeded by a paid Discord function. This means that you can now officially set a custom avatar for any server you wish if you have Discord Nitro.**
+**Ram will NOT be decommissioned, however if you would like to remove the [BOT] tag next to your name, it is now possible with Nitro.**
+**All that said, what *does* make Ram still unique is that avatars are there forever in the chat history and will never change.**
+
 **{self.bot.description}** 
 **Support server: [MechHub/DJ4wdsRYy2](https://discord.gg/DJ4wdsRYy2)**
 
 My help message is quite long, and I can't really simplify it down.
-Please visit my [GitHub Repository](https://github.com/SUPERMECHM500/MWSRam#vanity-commands) to my guide.
+Please visit my [GitHub Repository](https://github.com/SUPERMECHM500/Ram-Rebase-#commands) to my guide.
 No account required.
 """
         ).add_field(

@@ -32,7 +32,7 @@ class BackgroundTasks(Cog):
         else:
             activity = Activity(
                 type=ActivityType.watching,
-                name=f"{self.bot.text_status} | UTC: {time}")
+                name=f"{time}/UTC | {self.bot.command_prefix} | {len(self.bot.guilds)}")
 
         await self.bot.change_presence(status=status, activity=activity)
 

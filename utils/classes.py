@@ -101,39 +101,38 @@ class BotInteractionCooldown(Exception):
 class Bot(DiscordBot):
 
     def __init__(self, *args, **kwargs):
+        # Timer to track minutes since responded to a command.
+        self.inactive = 0
 
-        # Namespace variables, not saved to files
-        self.inactive = 0  # Timer to track minutes since responded to a command
-        self.waiting: List[int] = list()  # Users waiting for a response from developer
-        self.cwd = getcwd()  # Global bot directory
-        self.text_status = f"{kwargs.get('command_prefix')}help"  # Change first half of text status
+        # Global bot directory
+        self.cwd = getcwd()
 
-        # Namespace variable to indicate if a support thread is open or not.
-        # If true, the developer cannot accept a support message if another is already active.
-        self.thread_active = False
+        # Tokens
+        self.auth = kwargs.pop("auth")
 
         # Default data. Used to initialize and update data structures.
         self.defaults = kwargs.pop("defaults")
-
+        
         # Database
         self.database = kwargs.pop("database")  # Online
         self.user_data = kwargs.pop("user_data") # Local
         self.config = self.user_data["config"]  # Shortcut for user_data['config']
         print("[] Data and configurations loaded.")
 
-        # To be filled by self.connect_dbl() in on_ready
-        self.dbl: DBLClient = kwargs.pop("dbl", None)
-
-        # Attribute for accessing tokens from database
-        self.auth = kwargs.pop("auth")
-
         # Get the channel ready for errorlog
         # Bot.get_channel method not available until on_ready
         self.errorlog_channel: int = kwargs.pop("errorlog", None)
-        
+
         # Cooldown to be used in all loops and the beginnings of commands.
         # Users whose ID is in here cannot interact with the bot for `max_age_seconds`
         self.global_cooldown = ExpiringDict(max_len=float('inf'), max_age_seconds=2)
+        
+        # To be filled by self.connect_dbl() in on_ready
+        self.dbl: DBLClient = kwargs.pop("dbl", None)
+
+        # Uers who's ID is in this list will be ignored in the main on_message.
+        # Specific to this bot.
+        self.pause_on_message = []
 
         # Load bot arguments into __init__
         super().__init__(*args, **kwargs)
@@ -192,7 +191,7 @@ class Bot(DiscordBot):
 
         # Otherwise, use default handler
         else:
-            await super().on_error(event_method=event_name, *args, **kwargs)
+            await super().on_error(*args, **kwargs)
 
     async def on_message(self, msg):
         """Disable primary Bot.process_commands listener for cogs to call individually."""

@@ -28,28 +28,20 @@ INT_FROM_EID = {
 }
 
 def get_engraved_id_from_msg(content: str) -> Optional[int]:
-    try:
-        if not content.endswith(EID_FROM_INT[10]):
-            raise IndexError
-
-        msg_id_block = list(content[-19:])
-        msg_id_block.pop()
-
-        engraved_id_parts = list()
-        for i in msg_id_block:
-            engraved_id_parts.append(str(INT_FROM_EID[i]))
-
-        engraved_id = ''.join(engraved_id_parts)
-        engraved_id = int(engraved_id)
-
-    except IndexError:
-        return
-    
-    except ValueError:
+    if not content.endswith(EID_FROM_INT[10]):
         return
 
-    else:
-        return engraved_id
+    msg_id_block = list(content[-19:])
+    msg_id_block.pop()
+
+    engraved_id_parts = list()
+    for i in msg_id_block:
+        engraved_id_parts.append(str(INT_FROM_EID[i]))
+
+    engraved_id = ''.join(engraved_id_parts)
+    engraved_id = int(engraved_id)
+
+    return engraved_id
 
 def create_engraved_id_from_user(u_id: int) -> Optional[str]:
     engraved_id_parts = list()

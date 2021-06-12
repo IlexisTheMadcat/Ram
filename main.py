@@ -13,7 +13,6 @@ from utils.classes import Bot
 from utils.errorlog import ErrorLog
 from utils.FirebaseDB import FirebaseDB
 
-# NOTES
 
 DATA_DEFAULTS = {
     "UserData": {
@@ -38,7 +37,9 @@ DATA_DEFAULTS = {
 
             # Messages sent in channels whose IDs are in the first list are ignored.
             # Messages sent that start with any element in the second list are ignored.
-            "Blacklists": ([0], ["placeholder"]),  # ([int(channelID)], [str(prefix)])
+            "Blacklists": {
+                "guildID": [[0], ["placeholder"]]  # ([int(channelID)], [str(prefix)])
+            },
 
             # A library of up to 10 closet entries locked by top.gg voting.
             # These are global and can be accessed cross-server.
@@ -52,7 +53,7 @@ DATA_DEFAULTS = {
             "Settings": {
                 
             },
-            "ServerBlacklists": ([0], ["placeholder"]),  # ([int(channelID)], [str(prefix)])
+            "ServerBlacklists": [[0], ["placeholder"]],  # ([int(channelID)], [str(prefix)])
             "BlockedUsers": [0]  # [int(userID)]
         }
     },
@@ -64,7 +65,7 @@ DATA_DEFAULTS = {
         "BOT_TOKEN":"xxx",
         "DBL_TOKEN":"xxx"
     },
-
+    
     "config": {
         "debug_mode": False, 
         # Print exceptions to stdout.
@@ -73,13 +74,13 @@ DATA_DEFAULTS = {
         # The channel that errors are sent to. 
         
         "first_time_tip": "👋 It appears to be your first time using this bot!\n"
-                          "ℹ️ For more information and help, please visit [this GitHub README](https://github.com/SUPERMECHM500/MWSRam-Outdated#vanity-profile-pics--ram).\n"
+                          "ℹ️ For more information and help, please visit [this GitHub README](https://github.com/SUPERMECHM500/Ram-Rebase-#vanity-profile-pics--ram).\n"
                           "ℹ️ For brief legal information, please use the `var:legal` command.\n"
                           "||(If you are recieving this notification again, your data has been reset due to storage issues. Join the support server if you have previous data you want to retain.)||",
         
         "quick_delete_tip": "You just sent your first vanity message!\n"
-                            "As you most likely have already seen, the 🗑 emoji appeared under your message for a few seconds. This is for quickly deleting your message.\n"
-                            "You may toggle this behavior by running the command `var:quick_del`."
+                            "As you most likely have already seen, the <:delete_message_icon:850772261773770782> emoji appeared under your message for a few seconds. This is for quickly deleting your message.\n"
+                            "You may toggle this behavior by running the command `var:quick_del`. To delete your message after this short period, react with :x:."
     }
 }
 
@@ -99,7 +100,7 @@ if exists("Workspace/Files/ServiceAccountKey.json"):
 else:  # If it doesn't exists assume running on replit
     try:
         from replit import db
-        key = dict(db)["SAK"]
+        key = dict(db["SAK"])
     except Exception:
         raise FileNotFoundError("Could not find ServiceAccountKey.json.")
 
@@ -167,7 +168,7 @@ async def on_ready():
     await bot.connect_dbl(autopost=True)
 
     app_info = await bot.application_info()
-    bot.owner = bot.get_user(app_info.owner.id)
+    bot.owner = app_info.owner
 
     permissions = Permissions()
     permissions.update(
@@ -175,9 +176,7 @@ async def on_ready():
         embed_links=True,
         manage_messages=True,
         manage_webhooks=True,
-        add_reactions=True,
-        attach_files=True
-    )
+        add_reactions=True)
 
     # Add the ErrorLog object if the channel is specified
     if bot.config["error_log_channel"]:
