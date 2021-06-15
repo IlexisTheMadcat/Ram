@@ -1,4 +1,6 @@
-*Workspace/Files/dumbshit.json*
-*poetry.lock*
-*pyproject.toml*
 *__pycache__*
+.vs
+Storage
+Workspace
+!Workspace/Files
+*ServiceAccountKey.json*
