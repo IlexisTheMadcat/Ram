@@ -4,6 +4,7 @@ from contextlib import suppress
 from sys import exc_info
 from copy import deepcopy
 
+import topgg
 from timeit import default_timer
 from discord import Webhook, Message
 from discord.errors import Forbidden, NotFound, HTTPException
@@ -24,6 +25,7 @@ from utils.utils import (
     create_engraved_id_from_user,
     get_engraved_id_from_msg)
 
+
 class Events(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
@@ -31,11 +33,22 @@ class Events(Cog):
     # Message events
     # --------------------------------------------------------------------------------------------------------------------------
     @Cog.listener()
+    async def on_dbl_vote(data):
+        """An event that is called whenever someone votes for the bot on Top.gg."""
+        if data["type"] == "test":
+            # this is roughly equivalent to
+            # `return await on_dbl_test(data)` in this case
+            print(data)
+
+        print(f"Received a vote:\n{data}")
+
+    @Cog.listener()
     async def on_message(self, msg: Message):
         # Cooldown
         if msg.author.id in self.bot.global_cooldown or msg.author.id in self.bot.pause_on_message: return
         else: self.bot.global_cooldown.update({msg.author.id:"placeholder"})
         
+        # Vanity message
         if msg.author.bot and msg.author.discriminator == "0000":
             engravedid = get_engraved_id_from_msg(msg.content)
             if engravedid:
@@ -58,27 +71,6 @@ class Events(Cog):
                             await msg.remove_reaction("<:delete_message_icon:850772261773770782>", msg.guild.me)
             return
 
-        # If bot listing supports webhooks
-        if msg.author.id == 726313554717835284:  
-            ids = msg.content.split(";")
-            voter = int(ids[0])
-            voted_for = int(ids[1])
-
-            if voted_for == self.bot.user.id:
-                user = await self.bot.fetch_user(voter)
-                if not user: return
-
-                try:
-                    await user.send("Thanks for voting at top.gg! You can now use the following commands shortly for 12 hours.\n"
-                                    "`add_to_closet, remove_from_closet, rename_cloest_entry, see_closet, preview_closet_entry`\n")
-
-                except HTTPException or Forbidden:
-                    print(f"[❌] {user} ({user.id}) voted for \"{self.bot.user}\". DM Failed.")
-                else:
-                    print(f"[✅] {user} ({user.id} voted for \"{self.bot.user}\".")
-
-                return
-        
         # Don't respond to bots.
         if msg.author.bot:
             return
