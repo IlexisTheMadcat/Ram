@@ -5,8 +5,8 @@ from typing import List
 
 from expiringdict import ExpiringDict
 from discord import Embed
-from dbl.client import DBLClient
-from dbl.errors import DBLException
+from topgg import DBLClient
+from topgg.errors import TopGGException
 from discord.ext.commands.bot import Bot as DiscordBot
 
 
@@ -143,7 +143,7 @@ class Bot(DiscordBot):
     
     @property
     def dbl_page(self):
-        return f"https://discordbots.org/bot/{self.user.id}"
+        return f"https://top.gg/bot/{self.user.id}"
 
     @property
     def dbl_vote(self):
