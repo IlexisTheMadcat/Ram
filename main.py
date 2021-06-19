@@ -91,7 +91,7 @@ INIT_EXTENSIONS = [
     "events",
     "help",
     "repl",
-    "web"
+    # "web"
 ]
 
 if exists("Workspace/Files/ServiceAccountKey.json"):
