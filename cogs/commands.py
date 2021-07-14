@@ -210,11 +210,22 @@ class Commands(Cog):
     @command(aliases=["pv"])
     @bot_has_permissions(manage_webhooks=True, send_messages=True, embed_links=True)
     async def preview(self, ctx, url=None):
+        if not url:
+            if ctx.message.attachments:
+                url = ctx.message.attachments[0].url
+            else:
+                await ctx.send(embed=Embed(
+                    title="Input Error",
+                    description=":x: You need to provide an image URL or attach a file.",
+                color=0xff0000))
+                return
+
         try:
             dummy = await ctx.channel.create_webhook(name=ctx.author.display_name)
             await dummy.send(embed=Embed(
                 title="Preview",
-                description=f"{self.bot.user.name}: Preview message.\n",
+                description=f"{self.bot.user.name}: Preview message.\n"
+                            f"If the image does not load, there is an issue with your URL. It must lead directly to an image.",
                 ).set_image(url=url),
                 avatar_url=url)
             return await dummy.delete()
