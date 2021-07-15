@@ -68,12 +68,15 @@ Moderation -- Enforce some actions:
     see_server_blacklists - No limits
     server_blacklist      - You require "Manage Channels" permission
 
-Genral -- General commands:
+General -- General commands:
     help
     invite
 ```
 
 ## **Vanity Commands**
+This feature-set is the core of Ram. She allows you to have custom avatars in servers that she is in for free. \
+The only downside to this free server-specific avatar is that you get the `[BOT]` tag beside your name and your color is removed.
+
 ### SET_VANITY; Aliases: "set"
 `var:set_vanity <url>`\
 **--------------------------------------------------**\
@@ -96,23 +99,22 @@ Use this command if you frequently use bot commands because of how this bot work
 Returns you a link to `user`s avatar.\
 **--** If they have a vanity equipped, this will return their vanity avatar's url.\
 **----** To get their standard avatar at any time, add "standard" to your command.\
-**--** If they don't have a vanity avatar equipped, their standard avatar will be returned, even if "standard" is not provided.\
+**--** If they don't have a vanity avatar equipped, their standard avatar will be returned, even if "standard" is not provided.
 
 ### TOGGLE_QUICK_DELETE; Aliases: "toggle_x", "quick_del"
 `var:toggle_quick_delete`\
 **--------------------------------------------------**\
 Toggle the quick delete reaction that appears under message by default.\
--- This "quick_delete" feature allows user who find it difficult to react to delete their message provides them a shortcut for 5 seconds.\
--- Use this command to turn said feature off. It does bother some users.
+**--** This "quick_delete" feature allows user who find it difficult to react to delete their message provides them a shortcut for 5 seconds.\
+**--** Use this command to turn said feature off. It does bother some users.
 
-### PREVIEW; Aliases: "vp"
+### PREVIEW; Aliases: "pv"
 `var:preview <url>`
 **--------------------------------------------------**\
-Preview how your image will appear as the vanity icon.\
--- File attachments are not (yet) supported, please enter the URL.
+Preview how your image will appear as the vanity icon.
 
 ## **Blacklisting**
-This feature-set allows you to block Ram from transforming your message if it is in a certain channel or starts with a certain prefix.
+This feature allows you to block Ram from transforming your message if it is in a certain channel or starts with a certain prefix.
 
 ### BLACKLIST; Aliases: "bl"
 `var:blacklist [mode] [item]`\
@@ -177,23 +179,13 @@ Sends a message with the vanity avatar of closet entry `name`.\
 Check the full list above to see what permission you need for a command.
 
 ### SERVER_BLACKLIST; Aliases: "s_bl"
-Note: This command functions very similar to the `var:blacklist` command.\
-The only few differences:\
-1) You require the `Manage Server` permission to use it.\
-2) Items blacklisted are added for everyone, so it is a great tool for enforcing it. \
-These are tied to your server's id.
-`var:server_blacklist <mode> [item]`\
+`var:server_blacklist [mode] [item]`
 **--------------------------------------------------**\
-Members with the `Manage Server` permission can blacklist channels from transforming your messages for that server.\
-**--** `mode` can be "view" (default) to show the blacklist, or one of the following to edit:\
-**----** `channal-add` or `ch-a` - add a channel to turn vanity avatars off for that channel.\
-**----** `channal-remove` or `ch-r` - remove a channel to turn vanity avatars back on for that channel.\
-**----** `prefix-add` or `pf-a` - add a prefix to prevent vanity messaages from appearing for messages starting with said prefix.\
-**----** `prefix-remove` or `pf-r` - remove a prefix to allow vanity messages to appear for messages starting with said prefix.\
-**--** `item` can be a channel ID (`[channal-add, channal-remove]`), or a prefix string (`[prefix-add, prefix-remove]`).\
-**----** `item` is required when using the modes `prefix-add` or `prefix-remove`.\
-**----** `item` is optional when using the modes `channel-add` or `channel-remove`. 
-**------** If left empty, `item` will be the channel you run the command in.
+This command functions very similar to the [blacklist](https://github.com/SUPERMECHM500/Ram-Rebase-#blacklist-aliases-bl) command.\
+The only few differences:
+1 - You require the `Manage Channels` permission to use it.\
+2 - Items blacklisted are added for everyone, so it is a great tool for enforcing it.\
+
 
 ### **LIST**
 `var:list`\
