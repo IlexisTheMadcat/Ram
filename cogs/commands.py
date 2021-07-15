@@ -446,15 +446,14 @@ class Commands(Cog):
                 return
 
         elif mode in prefixadd:
-            if len(item) > 5:
-                return await ctx.send(embed=Embed(
+            if len(item) > 10:
+                await ctx.send(embed=Embed(
                     title="Error",
-                    description="Your prefix can only be up to 5 characters long.",
+                    description="Your prefix can only be up to 10 characters long.",
                     color=0xff0000))
 
-            if str(ctx.guild.id) not in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"]:
-                self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)] = ([], [])
-                    
+                return
+
             if item not in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1]:
                 self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1].append(item)
                 await ctx.send(embed=Embed(
@@ -462,6 +461,8 @@ class Commands(Cog):
                     description=f'Added "{item}" to blacklisted prefixes for you.'))
 
                 print(f'+ Added "{item}" to blacklisted prefixes for {ctx.author} ({ctx.author.id}).')
+
+                return
             
             else:
                 await ctx.send(embed=Embed(
@@ -469,10 +470,9 @@ class Commands(Cog):
                     description="That prefix is already blacklisted for you.",
                     color=0xff0000))
 
+                return
+
         elif mode in prefixremove:
-            if str(ctx.guild.id) not in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"]:
-                self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)] = ([], [])
-                    
             if item in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1]:
                 self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1].remove(item)
                 await ctx.send(embed=Embed(
@@ -484,18 +484,21 @@ class Commands(Cog):
                 return
             
             else:
-                return await ctx.send(embed=Embed(
+                await ctx.send(embed=Embed(
                     title="Error",
                     description=f"`{item}` isn't in your blacklist.\n"
-                                f"Type `var:see_blacklists` to see your "
-                                f"blacklisted channels and prefixes.",
+                                f"Type `var:see_blacklists` to see your blacklisted channels and prefixes.",
                     color=0xff0000))
+                
+                return
 
         else:
             await ctx.send(embed=Embed(
                 title="Argument Error",
                 description=f'Invalid mode passed: `{mode}`. See [blacklisting](https://github.com/SUPERMECHM500/Ram-Rebase-#blacklist-aliases-bl).',
                 color=0xff0000))
+
+            return
 
     # CLOSETS
     @command(aliases=["cl_add"])
