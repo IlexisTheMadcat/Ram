@@ -133,7 +133,8 @@ You have the option to blacklist channels and prefixes from transforming your me
 *Sending a message in a channel that is in your blacklist will not transform it.*\
 *Sending a message starting with a prefix in your blacklist will not transform it.*
 
-## Closets - These commands require you to vote the bot at [Top.gg](https://top.gg/bot/687427956364279873).
+## **Closets** 
+`[i]` These commands require you to vote the bot at [Top.gg](https://top.gg/bot/687427956364279873).
 This feature-set allows you to store your favorite vanities into a Key:Value dictionary.\
 To set a closet entry as your vanity, enter the `var:set` command followed by the closet entry's name.\
 Remember, `var:set` takes `url` as an argument, and will almost always treat it as a URL. \
@@ -179,15 +180,14 @@ Sends a message with the vanity avatar of closet entry `name`.\
 Check the full list above to see what permission you need for a command.
 
 ### SERVER_BLACKLIST; Aliases: "s_bl"
-`var:server_blacklist [mode] [item]`
+`var:server_blacklist [mode] [item]`\
 **--------------------------------------------------**\
 This command functions very similar to the [blacklist](https://github.com/SUPERMECHM500/Ram-Rebase-#blacklist-aliases-bl) command.\
-The only few differences:
+The only few differences:\
 1 - You require the `Manage Channels` permission to use it.\
-2 - Items blacklisted are added for everyone, so it is a great tool for enforcing it.\
+2 - Items blacklisted are added for everyone, so it is a great tool for enforcing it.
 
-
-### **LIST**
+### LIST
 `var:list`\
 **--------------------------------------------------**\
 Returns a list of all users in the server with vanities equipped.
@@ -206,7 +206,7 @@ Manage a user's ability to use the bot. This applies only in this server.\
 **----** Example: `@SUPER MECH M500` or "SUPER MECH M500#2352"\
 **------** This is the bot developer's YouTube alias. The username could be different.
 
-### **INVITE**
+### INVITE
 `var:invite`\
 **--------------------------------------------------**\
 Gives you an invite link to invite this bot to any server.\
