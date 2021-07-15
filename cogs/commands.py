@@ -130,8 +130,9 @@ class Commands(Cog):
         if not ctx.guild:
             return await ctx.send(embed=Embed(
                 title="Error",
-                description="This command cannot be used in a DM channel. Consider "
-                            "using it in a private channel in one of your servers.",))
+                description="This command cannot be used in a DM channel.\n"
+                            "Consider using it in a private channel in one of your servers.",
+                color=0xff0000))
         
         if str(ctx.guild.id) in self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"]:
             self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(ctx.guild.id)] = [
@@ -154,15 +155,16 @@ class Commands(Cog):
     @command()
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def current(self, ctx: Context, user: User = None, standard: str = None):
-        if standard not in ["standard", "standard_url"]:
-            standard = None
-
         if not ctx.guild:
             return await ctx.send(embed=Embed(
                 title="Error",
-                description="This command cannot be used in a DM channel. Consider "
-                            "using it in a private channel in one of your servers."))
-        
+                description="This command cannot be used in a DM channel.\n"
+                            "Consider using it in a private channel in one of your servers.",
+                color=0xff0000))
+
+        if standard not in ["standard", "standard_url"]:
+            standard = None
+
         if not user:
             user = ctx.author
 
@@ -210,6 +212,13 @@ class Commands(Cog):
     @command(aliases=["pv"])
     @bot_has_permissions(manage_webhooks=True, send_messages=True, embed_links=True)
     async def preview(self, ctx, url=None):
+        if not ctx.guild:
+            return await ctx.send(embed=Embed(
+                title="Error",
+                description="This command cannot be used in a DM channel.\n"
+                            "Consider using it in a private channel in one of your servers.",
+                color=0xff0000))
+
         if not url:
             if ctx.message.attachments:
                 url = ctx.message.attachments[0].url
@@ -382,8 +391,7 @@ class Commands(Cog):
                     description=f"{channel.mention} {'(here) ' if here else ''}was blacklisted for you.\n"
                                 f"You can still use bot commands here."))
 
-                print(f"+ Channel '{channel.name}' ({channel.id}) "
-                      f"was blacklisted for {ctx.author} ({ctx.author.id}).")
+                print(f"+ Channel '{channel.name}' ({channel.id}) was blacklisted for {ctx.author} ({ctx.author.id}).")
 
                 return
                 
@@ -432,8 +440,7 @@ class Commands(Cog):
                     title="Success",
                     description=f"{channel.mention} {'(here) ' if here else ''}was unblacklisted for you."))
 
-                print(f"- Channel '{channel.name}' ({channel.id}) "
-                      f"was unblacklisted for {ctx.author} ({ctx.author.id}).")
+                print(f"- Channel '{channel.name}' ({channel.id}) was unblacklisted for {ctx.author} ({ctx.author.id}).")
                 
             else:
                 await ctx.send(embed=Embed(
@@ -504,6 +511,13 @@ class Commands(Cog):
     @command(aliases=["cl_add"])
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def add_to_closet(self, ctx: Context, *, name: str):
+        if not ctx.guild:
+            return await ctx.send(embed=Embed(
+                title="Error",
+                description="This command cannot be used in a DM channel.\n"
+                            "Consider using it in a private channel in one of your servers.",
+                color=0xff0000))
+
         check = await self.bot.get_user_vote(ctx.author.id)
     
         if not check:
@@ -598,6 +612,13 @@ class Commands(Cog):
     @command(aliases=["cl_remove"])
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def remove_from_closet(self, ctx: Context, name: str):
+        if not ctx.guild:
+            return await ctx.send(embed=Embed(
+                title="Error",
+                description="This command cannot be used in a DM channel.\n"
+                            "Consider using it in a private channel in one of your servers.",
+                color=0xff0000))
+
         check = await self.bot.get_user_vote(ctx.author.id)
 
         if not check:
@@ -639,6 +660,13 @@ class Commands(Cog):
     @command(aliases=["cl_rename"])
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def rename_closet_entry(self, ctx: Context, name: str, rename: str):
+        if not ctx.guild:
+            return await ctx.send(embed=Embed(
+                title="Error",
+                description="This command cannot be used in a DM channel.\n"
+                            "Consider using it in a private channel in one of your servers.",
+                color=0xff0000))
+
         check = await self.bot.get_user_vote(ctx.author.id)
 
         if not check:
@@ -776,45 +804,89 @@ class Commands(Cog):
     @command(aliases=["s_bl"])
     @bot_has_permissions(send_messages=True, embed_links=True)
     @has_permissions(manage_channels=True)
-    async def server_blacklist(self, ctx: Context, mode: str = "view", item: str = None):
+    async def server_blacklist(self, ctx, mode = None, item = None):
         if not ctx.guild:
             return await ctx.send(embed=Embed(
                 title="Error",
-                description="This command cannot be used in a DM channel. Consider using "
-                            "it in a private channel in one of your servers.",
+                description="This command cannot be used in a DM channel.\n"
+                            "Consider using it in a private channel in one of your servers.",
                 color=0xff0000))
-
+        
         channeladd = ["channel-add", "ch-a"]
         channelremove = ["channel-remove", "ch-r"]
         prefixadd = ["prefix-add", "pf-a"]
         prefixremove = ["prefix-remove", "pf-r"]
 
-        if not item and (mode in channeladd or mode in channelremove):
-            item = str(ctx.channel.id)
-        
-        if mode in channeladd:
+        if not mode:
+            if self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"] == [[], []]:
+                return await ctx.send(embed=Embed(
+                    title="Error",
+                    description="You haven't blacklisted anything for this server yet.",
+                    color=0xff0000))
+            
+            remove_queue = []
+            emb = Embed(title="Blacklist")
+
+            if self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
+                channels_list = []
+                for n in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
+                    channel = self.bot.get_channel(n)
+                    if not channel:
+                        remove_queue.append(n)
+                        continue
+
+                    else:
+                        if isinstance(channel, TextChannel):
+                            channels_list.append(f"-- {channel.mention} `({channel.id})`")
+                            
+                        elif isinstance(channel, CategoryChannel):
+                            channels_list.append(f"-- `{channel.name} ({channel.id})`")
+                            
+                for n in remove_queue:
+                    self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].remove(n)
+
+                if self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
+                    emb.add_field(
+                        name="**Channels:**",
+                        inline=False, 
+                        value="\n".join(channels_list)
+                    )
+
+            if self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
+                prefixes_list = []
+
+                for i in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
+                    prefixes_list.append(f'-- `{i}`')
+
+                emb.add_field(
+                    name="**Prefixes:**",
+                    inline=False, 
+                    value="\n".join(prefixes_list)
+                )
+
+            await ctx.send(embed=emb)
+            print(f'[] Sent blacklisted items for {ctx.guild} ({ctx.guild.id}).')
+
+        elif mode in channeladd:
             if not item:
-                item = str(ctx.channel.id)
+                channel == ctx.channel
                 here = True
             else:
-                here = False
+                if item.startswith("<#") and item.endswith(">"):
+                    item = item.replace("<#", "")
+                    item = item.replace(">", "")
 
-            if item.startswith("<#") and item.endswith(">"):
-                item = item.replace("<#", "")
-                item = item.replace(">", "")
-
-            try:
-                item = int(item)
-            except ValueError:
-                await ctx.send(embed=Embed(
-                    title="Error",
-                    description="`item` needs to be a number and proper channel ID.\n"
-                                "Try to #mention the channel instead.",
-                    color=0xff0000))
+                try:
+                    item = int(item)
+                except ValueError:
+                    await ctx.send(embed=Embed(
+                        title="Error",
+                        description="`item` needs to be a number and proper channel ID.\n"
+                                    "Try to #mention the channel instead if it is a text channel.",
+                        color=0xff0000))
                 
-                return
+                    return
 
-            else:
                 channel = self.bot.get_channel(item)
 
                 if not channel or isinstance(channel, VoiceChannel) or channel not in ctx.guild.channels:
@@ -825,105 +897,109 @@ class Commands(Cog):
                                     "If you are trying to add a category, you have to have its ID.",
                         color=0xff0000))
 
+                    return
+
+                if channel.id == ctx.channel.id:
+                    here = True
                 else:
-                    if item not in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
-                        self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].append(item)
-                        
-                        if here:
-                            await ctx.send(embed=Embed(
-                                title="Success",
-                                description=f'{channel.mention} (here) was blacklisted for this server.\n'
-                                            f'You can still use bot commands here.'))
+                    here = False
 
-                        elif not here:
-                            await ctx.send(embed=Embed(
-                                title="Success",
-                                description=f'{channel.mention} was blacklisted for this server.\n'
-                                            f'You can still use bot commands there.'))
-
-                        print(f'+ Channel "{channel.name}" ({channel.id}) '
-                              f'was blacklisted for server {ctx.guild.name} ({ctx.guild.id}).')
-                        
-                    else:
-                        if here:
-                            await ctx.send(embed=Embed(
-                                title="Error",
-                                description="This channel is already blacklisted for this server.",
-                                color=0xff0000))
-
-                        elif not here:
-                            await ctx.send(embed=Embed(
-                                title="Error",
-                                description="That channel is already blacklisted for this server.",
-                                color=0xff0000))
-
-                        return
-
-        elif mode in channelremove:
-            if not item:
-                item = str(ctx.channel.id)
-                here = True
-            else: here=False
-
-            if item.startswith("<#") and item.endswith(">"):
-                item = item.replace("<#", "")
-                item = item.replace(">", "")
-
-            try:
-                item = int(item)
-            except ValueError:
+            if channel.id in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
                 await ctx.send(embed=Embed(
                     title="Error",
-                    description="`item` needs to be a number and proper channel ID.\n"
-                                "Try to #mention the channel instead.",
+                    description=f"{'This' if here else 'That'} channel is already blacklisted for this server.",
+                    color=0xff0000))
+
+                return
+
+            elif channel.category and \
+                channel.category.id in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
+                
+                await ctx.send(embed=Embed(
+                    title="Error",
+                    description=f"{'This' if here else 'That'} channel is already blacklisted for this server.\n"
+                                f"{self.bot.get_emoji(818664266390700074)} Automatically blacklisted by an added category:\n"
+                                f"`{channel.category.name} ({channel.category.id})`.",
                     color=0xff0000))
                 
                 return
 
             else:
-                if item in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
-                    self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].remove(item)
-                    channel = self.bot.get_channel(item)
-                    if channel.id==ctx.channel.id: here=True
-                    
-                    if here:
-                        await ctx.send(embed=Embed(
-                            title="Success",
-                            description=f'{channel.mention if channel else item} (here) was unblacklisted for this server.'))
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].append(channel.id)
+                        
+                await ctx.send(embed=Embed(
+                    title="Success",
+                    description=f"{channel.mention} {'(here) ' if here else ''}was blacklisted for this server.\n"
+                                f"You can still use bot commands here."))
 
-                    elif not here:
-                        await ctx.send(embed=Embed(
-                            title="Success",
-                            description=f'{channel.mention if channel else item} was unblacklisted for this server.'))
+                print(f"+ Channel '{channel.name}' ({channel.id}) was blacklisted for {ctx.guild} ({ctx.guild.id}).")
 
-                    print(f'- Channel "{channel.name}" ({channel.id}) '
-                          f'was unblacklisted for server {ctx.guild.name} ({ctx.guild.id}).')
+                return
                 
-                else:
-                    if here:
-                        await ctx.send(embed=Embed(
-                            title="Error",
-                            description="This channel isn't in this server's blacklist.\n"
-                                        "Type `var:server_blacklist` with no arguments to see your "
-                                        "blacklisted channels and prefixes.",
-                            color=0xff0000))
 
-                    elif not here:
-                        await ctx.send(embed=Embed(
-                            title="Error",
-                            description="That channel isn't in this server's blacklist.\n"
-                                        "Type `var:server_blacklist` with no arguments to see your "
-                                        "blacklisted channels and prefixes.",
-                            color=0xff0000))
-                    
+        elif mode in channelremove:
+            if not item:
+                channel == ctx.channel
+                here = True
+            else:
+                if item.startswith("<#") and item.endswith(">"):
+                    item = item.replace("<#", "")
+                    item = item.replace(">", "")
+
+                try:
+                    item = int(item)
+                except ValueError:
+                    await ctx.send(embed=Embed(
+                        title="Error",
+                        description="`item` needs to be a number and proper channel ID.\n"
+                                    "Try to #mention the channel instead if it is a text channel.",
+                        color=0xff0000))
+                
                     return
 
-        elif mode in prefixadd:
-            if len(item) > 5:
-                return await ctx.send(embed=Embed(
+                channel = self.bot.get_channel(item)
+
+                if not channel or isinstance(channel, VoiceChannel) or channel not in ctx.guild.channels:
+                    await ctx.send(embed=Embed(
+                        title="Error",
+                        description="No text channel or category with that ID exists.\n"
+                                    "Try to #mention the channel instead. Note that voice channels are not allowed.\n"
+                                    "If you are trying to add a category, you have to have its ID.",
+                        color=0xff0000))
+
+                    return
+
+                if channel.id == ctx.channel.id:
+                    here = True
+                else:
+                    here = False
+
+            if channel.id in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
+                self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].remove(channel.id)
+                    
+                await ctx.send(embed=Embed(
+                    title="Success",
+                    description=f"{channel.mention} {'(here) ' if here else ''}was unblacklisted for this server."))
+
+                print(f"- Channel '{channel.name}' ({channel.id}) was unblacklisted for {ctx.guild} ({ctx.guild.id}).")
+                
+            else:
+                await ctx.send(embed=Embed(
                     title="Error",
-                    description="Your prefix can only be up to 5 characters long.",
+                    description=f"{'This' if here else 'That'} channel isn't in this server's blacklist.\n"
+                                f"Type `var:blacklist` with no arguments to see this server's blacklisted channels and prefixes.",
                     color=0xff0000))
+                    
+                return
+
+        elif mode in prefixadd:
+            if len(item) > 10:
+                await ctx.send(embed=Embed(
+                    title="Error",
+                    description="Your prefix can only be up to 10 characters long.",
+                    color=0xff0000))
+
+                return
 
             if item not in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
                 self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1].append(item)
@@ -931,13 +1007,17 @@ class Commands(Cog):
                     title="Success",
                     description=f'Added "{item}" to blacklisted prefixes for this server.'))
 
-                print(f'+ Added "{item}" to blacklisted prefixes for server {ctx.guild.name} ({ctx.guild.id}).')
+                print(f'+ Added "{item}" to blacklisted prefixes for {ctx.guild} ({ctx.guild.id}).')
+
+                return
             
             else:
                 await ctx.send(embed=Embed(
                     title="Error",
                     description="That prefix is already blacklisted for this server.",
                     color=0xff0000))
+
+                return
 
         elif mode in prefixremove:
             if item in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
@@ -946,109 +1026,69 @@ class Commands(Cog):
                     title="Success",
                     description=f'Removed "{item}" from blacklisted prefixes for this server.'))
 
-                print(f'- Removed "{item}" from blacklisted prefixes for server {ctx.guild.name} ({ctx.guild.id}).')
+                print(f'- Removed "{item}" from blacklisted prefixes for {ctx.guild} ({ctx.guild.id}).')
 
                 return
             
             else:
-                return await ctx.send(embed=Embed(
+                await ctx.send(embed=Embed(
                     title="Error",
-                    description=f"`{item}` isn't in your blacklist.\n"
-                                f"Type `var:see_blacklists` to see your "
-                                f"blacklisted channels and prefixes.",
+                    description=f"`{item}` isn't in this server's blacklist.\n"
+                                f"Type `var:see_blacklists` to see this server's blacklisted channels and prefixes.",
                     color=0xff0000))
-
-        elif mode == "view":
-            if self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"] == [[], []]:
-                return await ctx.send(embed=Embed(
-                    title="Error",
-                    description="You haven't blacklisted anything for this server yet.",
-                    color=0xff0000))
-
-            message_part = []
-
-            async def render():
-                message_part.append("Here are your blacklisted items for this server:\n")
-                if len(self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]):
-                    message_part.append("**Channels:**\n")
-                    for n in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0]:
-                        channel = self.bot.get_channel(n)
-                        if not channel:
-                            self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][0].remove(n)
-                            return False
-                        else:
-                            if isinstance(channel, TextChannel):
-                                message_part.append(f"-- #️⃣{channel.mention} ({channel.id})\n")
-                            
-                            elif isinstance(channel, CategoryChannel):
-                                message_part.append(f"-- 🇨{channel.name} ({channel.id})\n")
-                            
-                    return True
-
-            while True:
-                result = await render()
-                if not result:
-                    message_part = []
-                    continue
-                else:
-                    break
-
-            if not len(self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]) == 0:
-                message_part.append("**Prefixes:**\n")
-                for i in self.bot.user_data["GuildData"][str(ctx.guild.id)]["ServerBlacklists"][1]:
-                    message_part.append(f'-- `{i}`\n')
-
-            message_full = ''.join(message_part)
-            await ctx.send(embed=Embed(
-                tile="Blacklist",
-                description=message_full))
-
-            print(f'[] Sent blacklisted items for server {ctx.guild.name} ({ctx.guild.id}).')
+                
+                return
 
         else:
             await ctx.send(embed=Embed(
                 title="Argument Error",
-                description=f'Invalid mode passed: `{mode}`',
+                description=f'Invalid mode passed: `{mode}`. See [server_blacklisting](https://github.com/SUPERMECHM500/Ram-Rebase-#server_blacklist-aliases-s_bl).',
                 color=0xff0000))
+
+            return
 
     @command()
     @bot_has_permissions(send_messages=True, embed_links=True)
-    async def list(self, ctx: Context):
-        guild = ctx.guild
-        message = []
-        if guild.id in self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(guild.id)] and \
-            self.bot.user_data["UserData"][str(ctx.author.id)]["VanityAvatars"][str(guild.id)]:
-            message.append(
-                "Here are users using vanities in this server; "
-                "The list may contain members who have left:\n```")
+    async def list(self, ctx):
+ 
+        message_part = []
+        remove_queue = []
 
-            show_list = False
-            for u_id in self.bot.user_data["UserData"]:
-                if str(ctx.guild.id) in u_id["VanityAvatars"] and u_id["VanityAvatars"][0]:
-                    user = self.bot.get_user(u_id)
-                    if user:
-                        message.append(
-                            f"{user} - URL: \n"
-                            f"{self.bot.user_data['VanityAvatars'][str(guild.id)][u_id][0]}\n\n")
-                        show_list = True
+        for uid in self.bot.user_data["UserData"]:
+            if str(ctx.guild.id) in self.bot.user_data["UserData"][uid]["VanityAvatars"] and \
+                self.bot.user_data["UserData"][uid]["VanityAvatars"][str(ctx.guild.id)][0]:
+                    
+                member = ctx.guild.get_member(int(uid))
+                if not member:
+                    try: member = await ctx.guild.fetch_member(int(uid))
+                    except NotFound: member = None
 
-            if not show_list:
-                return await ctx.send(embed=Embed(
-                    title="Error",
-                    description="This server has no users with equipped vanities.",
-                    color=0xff0000
-                ))
+                if member:
+                    url = self.bot.user_data["UserData"][uid]['VanityAvatars'][str(ctx.guild.id)][0]
+                    filename = url.split("/")[-1]
 
-            message.append("```")
-            await ctx.send(embed=Embed(
-                title="Server Equipped Vanities",
-                description=''.join(message)))
+                    message_part.append(
+                        f"▌{member.mention} - URL: \n"
+                        f"▌[{filename}]({url})\n"
+                        f"")
+                else:
+                    remove_queue.append(uid)
+            
+        for uid in remove_queue:
+            self.bot.user_data["UserData"][uid]["VanityAvatars"].pop(str(ctx.guild.id))
 
-        else:
-            await ctx.send(embed=Embed(
-                title="Error",
-                description="This server has no users with equipped vanities.",
-                color=0xff0000))
+        if not message_part:
+            return await ctx.send(embed=Embed(
+                title="No Result",
+                description="This server has no users with equipped vanities."
+            ))
+
+            return
+
+        await ctx.send(embed=Embed(
+            title="Server Equipped Vanities",
+            description="Here are users using vanities in this server\n"
+                        f"{newline.join(message_part)}"))
 
     @bot_has_permissions(send_messages=True, embed_links=True)
     @has_permissions(manage_messages=True)
