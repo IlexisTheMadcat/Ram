@@ -152,7 +152,7 @@ class Commands(Cog):
                 description="You don't have a vanity avatar on right now.",
                 color=0xff0000))
 
-    @command()
+    @command(aliases=["avatar", "av"])
     @bot_has_permissions(send_messages=True, embed_links=True)
     async def current(self, ctx: Context, user: User = None, standard: str = None):
         if not ctx.guild:
