@@ -1173,13 +1173,11 @@ class Commands(Cog):
     @server_blacklist.before_invoke
     async def placeholder_remove(self, ctx):
         if ctx.command.name == "blacklist":
-            if str(ctx.guild.id) not in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"]:
-                return
-                
-            if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][0]:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['Blacklists'][str(ctx.guild.id)][0].remove(0)
-            if "placeholder" in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1]:
-                self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1].remove("placeholder")
+            if str(ctx.guild.id) in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"]:
+                if 0 in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][0]:
+                    self.bot.user_data['UserData'][str(ctx.author.id)]['Blacklists'][str(ctx.guild.id)][0].remove(0)
+                if "placeholder" in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1]:
+                    self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1].remove("placeholder")
         
         if ctx.command.name == "see_closet":
             if "placeholder" in self.bot.user_data['UserData'][str(ctx.author.id)]["Closet"].keys():
@@ -1196,10 +1194,11 @@ class Commands(Cog):
     @server_blacklist.after_invoke
     async def placeholder_add(self, ctx):
         if ctx.command.name == "blacklist":
-            if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][0]:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['Blacklists'][str(ctx.guild.id)][0].append(0)
-            if "placeholder" not in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1]:
-                self.bot.user_data['UserData'][str(ctx.author.id)]['Blacklists'][str(ctx.guild.id)][1].append("placeholder")
+            if str(ctx.guild.id) in self.bot.user_data['UserData'][str(ctx.author.id)]:
+                if 0 not in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][0]:
+                    self.bot.user_data['UserData'][str(ctx.author.id)]['Blacklists'][str(ctx.guild.id)][0].append(0)
+                if "placeholder" not in self.bot.user_data['UserData'][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][1]:
+                    self.bot.user_data['UserData'][str(ctx.author.id)]['Blacklists'][str(ctx.guild.id)][1].append("placeholder")
         
         if ctx.command.name == "see_closet":
             if "placeholder" not in self.bot.user_data['UserData'][str(ctx.author.id)]["Closet"].keys():
