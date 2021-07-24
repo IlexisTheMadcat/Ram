@@ -270,6 +270,9 @@ class Commands(Cog):
                 description="This command cannot be used in a DM channel.\n"
                             "Consider using it in a private channel in one of your servers.",
                 color=0xff0000))
+
+        elif str(ctx.guild.id) not in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"]:
+            self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)] = [[], []]
         
         channeladd = ["channel-add", "ch-a"]
         channelremove = ["channel-remove", "ch-r"]
@@ -278,10 +281,12 @@ class Commands(Cog):
 
         if not mode:
             if self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)] == [[], []]:
-                return await ctx.send(embed=Embed(
+                await ctx.send(embed=Embed(
                     title="Error",
-                    description="You haven't blacklisted anything for this server yet.",
+                    description="There's nothing here.",
                     color=0xff0000))
+
+                return
             
             remove_queue = []
             emb = Embed(title="Blacklist")
@@ -363,7 +368,9 @@ class Commands(Cog):
                 else:
                     here = False
 
-            if channel.id in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][0]:
+            if str(ctx.guild.id) in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"] and \
+                channel.id in self.bot.user_data["UserData"][str(ctx.author.id)]["Blacklists"][str(ctx.guild.id)][0]:
+                
                 await ctx.send(embed=Embed(
                     title="Error",
                     description=f"{'This' if here else 'That'} channel is already blacklisted for you.",
