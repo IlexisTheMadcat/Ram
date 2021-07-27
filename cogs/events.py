@@ -79,30 +79,62 @@ class Events(Cog):
         if msg.guild and not verify_command.valid:
             # Self-Blacklisted
             try:
-                for i in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][1]:
-                    if msg.content.startswith(i):
+                try:
+                    for i in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][1]:
+                        if msg.content.startswith(i):
+                            return
+
+                    if msg.channel.id in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0]:
                         return
 
-                if msg.channel.id in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0]:
-                    return
+                    if msg.channel.category and msg.channel.category.id in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0]:
+                        return
 
-                if msg.channel.category and msg.channel.category.id in self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0]:
-                    return
+                except IndexError:
+                    if isinstance(self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0][0], int):
+                        self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"].update({
+                            str(msg.guild.id):[self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0], ["placeholder"]]
+                        })
+
+                    elif isinstance(self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0][0], str):
+                        self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"].update({
+                            str(msg.guild.id):[[0], self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"][str(msg.guild.id)][0]]
+                        })
+                    else:
+                        self.bot.user_data["UserData"][str(msg.author.id)]["Blacklists"].update({
+                            str(msg.guild.id):[[0], ["placeholder"]]
+                        })
 
             except KeyError:
                 pass
 
             # Server-Blacklisted
             try:
-                for i in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][1]:
-                    if msg.content.startswith(i):
-                        return
+                try:
+                    for i in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][1]:
+                        if msg.content.startswith(i):
+                            return
 
-                if msg.channel.id in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][0]:
-                    return
+                    if msg.channel.id in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][0]:
+                        return
                 
-                if msg.channel.category and msg.channel.category.id in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][0]:
-                    return
+                    if msg.channel.category and msg.channel.category.id in self.bot.user_data["GuildData"][str(msg.guild.id)]["ServerBlacklists"][0]:
+                        return
+                
+                except KeyError:
+                    if isinstance(self.bot.user_data["GuildData"][str(msg.author.id)]["ServerBlacklists"][0], int):
+                        self.bot.user_data["GuildData"][str(msg.author.id)].update({
+                            "ServerBlacklists":[self.bot.user_data["GuildData"][str(msg.author.id)]["ServerBlacklists"][0], ["placeholder"]]
+                        })
+
+                    elif isinstance(self.bot.user_data["GuildData"][str(msg.author.id)]["ServerBlacklists"][0], str):
+                        self.bot.user_data["GuildData"][str(msg.author.id)].update({
+                            "ServerBlacklists":[[0], self.bot.user_data["GuildData"][str(msg.author.id)]["ServerBlacklists"][0]]
+                        })
+                    else:
+                        self.bot.user_data["GuildData"][str(msg.author.id)].update({
+                            "ServerBlacklists":[[0], ["placeholder"]]
+                        })
 
             except KeyError:
                 pass
