@@ -756,8 +756,7 @@ class Commands(Cog):
         for i, url in self.bot.user_data["UserData"][str(ctx.author.id)]["Closet"].items():
             message_part.append(
                 f"▄ Name: {i}\n"
-                f"▀ URL: ({url})\n"
-                f"\n")
+                f"▀ URL: ({url})\n")
         
         return await ctx.send(embed=Embed(
             title="Your Closet",
