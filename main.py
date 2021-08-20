@@ -8,6 +8,7 @@ from discord import __version__, Activity, ActivityType, Intents
 from discord.enums import Status
 from discord.permissions import Permissions
 from discord.utils import oauth_url
+from discord.ext.commands import ExtensionAlreadyLoaded
 
 from utils.classes import Bot
 from utils.errorlog import ErrorLog
@@ -192,13 +193,17 @@ async def on_ready():
         try:
             bot.load_extension(f"cogs.{cog}")
             print(f"| Loaded initial cog {cog}")
+        except ExtensionAlreadyLoaded:
+            continue
+        
         except Exception as e:
-            try:
+            if hasattr(e, "original"):
                 print(f"| Failed to load extension {cog}\n|   {type(e.original).__name__}: {e.original}")
-            except AttributeError:
+            else:
                 print(f"| Failed to load extension {cog}\n|   {type(e).__name__}: {e}")
+            
             error = exc_info()
-            if error:
+            if e:
                 await bot.errorlog.send(error, event="Load Initial Cog")
 
     print(f"#-------------------------------#\n"
