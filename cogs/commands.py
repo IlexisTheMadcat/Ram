@@ -169,7 +169,7 @@ class Commands(Cog):
             user = ctx.author
 
         if user.id == self.bot.user.id:
-            print(f"[] Sent bot's avatar url to user \"{ctx.author}\".")
+            print(f"[VAR] Sent bot's avatar url to user \"{ctx.author}\".")
             await ctx.send(embed=Embed(
                 title="Ram's Avatar",
                 description="My avatar is located here:",
@@ -184,7 +184,7 @@ class Commands(Cog):
                 ).set_image(url=user.avatar_url))
                 
                 print(
-                    f'[] Sent standard avatar url for {user} ({user.id}'
+                    f'[VAR] Sent standard avatar url for {user} ({user.id}'
                     f' to user {ctx.author} ({ctx.author.id}).')
                 
                 return
@@ -200,7 +200,7 @@ class Commands(Cog):
                     ).set_image(url=self.bot.user_data["UserData"][str(user.id)]["VanityAvatars"][str(ctx.guild.id)][0]))
 
                     print(
-                        f'[] Sent vanity avatar url for {user} ({user.id}'
+                        f'[VAR] Sent vanity avatar url for {user} ({user.id}'
                         f' to user {ctx.author} ({ctx.author.id}).')
             
                 else:
@@ -329,7 +329,7 @@ class Commands(Cog):
                 )
 
             await ctx.send(embed=emb)
-            print(f'[] Sent blacklisted items for {ctx.author} ({ctx.author.id}).')
+            print(f'[VAR] Sent blacklisted items for {ctx.author} ({ctx.author.id}).')
 
         elif mode in channeladd:
             if not item:
@@ -871,7 +871,7 @@ class Commands(Cog):
                 )
 
             await ctx.send(embed=emb)
-            print(f'[] Sent blacklisted items for {ctx.guild} ({ctx.guild.id}).')
+            print(f'[VAR] Sent blacklisted items for {ctx.guild} ({ctx.guild.id}).')
 
         elif mode in channeladd:
             if not item:

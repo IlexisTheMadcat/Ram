@@ -198,7 +198,7 @@ class Events(Cog):
                         stop = default_timer()
 
                     comptime = round(stop-start, 3)
-                    print(f"[] Response delay {str(comptime).ljust(5)}s from {msg.author} ({msg.author.id}).")
+                    print(f"[VAR] Response delay {str(comptime).ljust(5)}s from {msg.author} ({msg.author.id}).")
 
                     self.bot.inactive = 0
 
