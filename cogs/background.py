@@ -36,18 +36,22 @@ class BackgroundTasks(Cog):
 
         await self.bot.change_presence(status=status, activity=activity)
 
-    @loop(seconds=57.5)
+    @loop(seconds=297.5)
     async def save_data(self):
-        # If the repl is exited while saving, data may be corrupted or reset.
         print("[VAR: ... Saving, do not quit...", end="\r")
         await sleep(2)
         print("[VAR: !!! Saving, do not quit...", end="\r")
-        time = datetime.now().strftime("%H:%M, %m/%d/%Y")
 
-        self.bot.database.update(self.bot.user_data)
+        if self.bot.use_firebase:
+            self.bot.database.update(self.bot.user_data)
+
+        else:
+            with open("Workspace/Files/user_data.json", "w") as f:
+                user_data = dump(self.bot.user_data, f)
 
         self.bot.inactive = self.bot.inactive + 1
-        print(f"[VAR: {time}] Running.")
+        time = datetime.now().strftime("%H:%M, %m/%d/%Y")
+        print(f"[HRB: {time}] Running.")
 
     @status_change.before_loop
     async def sc_wait(self):
