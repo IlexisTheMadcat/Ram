@@ -110,7 +110,7 @@ if DATA_CLOUD:
             raise FileNotFoundError("Could not find ServiceAccountKey.json.")
 
     db = FirebaseDB(
-        "https://nreader-database-default-rtdb.firebaseio.com/", 
+        "https://mwsram-database-default-rtdb.firebaseio.com/", 
         fp_accountkey_json=key)
 
     user_data = db.copy()
