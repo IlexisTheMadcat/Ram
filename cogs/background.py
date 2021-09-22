@@ -51,7 +51,7 @@ class BackgroundTasks(Cog):
 
         self.bot.inactive = self.bot.inactive + 1
         time = datetime.now().strftime("%H:%M, %m/%d/%Y")
-        print(f"[HRB: {time}] Running.")
+        print(f"[VAR: {time}] Running.")
 
     @status_change.before_loop
     async def sc_wait(self):
