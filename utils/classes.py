@@ -127,6 +127,10 @@ class Bot(DiscordBot):
         # Cooldown to be used in all loops and the beginnings of commands.
         # Users whose ID is in here cannot interact with the bot for `max_age_seconds`
         self.global_cooldown = ExpiringDict(max_len=float('inf'), max_age_seconds=2)
+
+        # A cache of loaded doujins, it will fill as doujins are retrieved by code.
+        # Values expire in 3 days since addition or resets when bot reloads.
+        self.error_contexts = ExpiringDict(max_len=float('inf'), max_age_seconds=259200)
         
         # To be filled by self.connect_dbl() in on_ready
         self.dbl: DBLClient = kwargs.pop("dbl", None)
