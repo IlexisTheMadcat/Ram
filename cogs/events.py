@@ -7,7 +7,7 @@ from copy import deepcopy
 import topgg
 from timeit import default_timer
 from discord import Webhook, Message
-from discord.errors import Forbidden, NotFound, HTTPException
+from discord.errors import Forbidden, NotFound, HTTPException, DiscordServerError
 from discord.utils import get
 from discord.ext.commands.cog import Cog
 from discord.ext.commands.context import Context
@@ -237,7 +237,7 @@ class Events(Cog):
             message = await channel.fetch_message(payload.message_id)
             user = await self.bot.fetch_user(payload.user_id)
             ctx = await self.bot.get_context(message)
-        except (NotFound, Forbidden):
+        except (NotFound, Forbidden, DiscordServerError):
             return
         
         if not ctx.guild:
