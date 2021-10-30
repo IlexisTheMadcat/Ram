@@ -14,6 +14,8 @@ from utils.classes import Bot
 from utils.errorlog import ErrorLog
 from utils.FirebaseDB import FirebaseDB
 
+# Using discord.py==1.7.x
+
 
 DATA_DEFAULTS = {
     "UserData": {
@@ -74,11 +76,20 @@ DATA_DEFAULTS = {
         "error_log_channel": 734499801697091654,
         # The channel that errors are sent to. 
         
-        "first_time_tip": "👋 It appears to be your first time using this bot!\n"
-                          "ℹ️ For more information and help, please visit [this GitHub README](https://github.com/SUPERMECHM500/Ram-Rebase-#vanity-profile-pics--ram).\n"
-                          "ℹ️ For brief legal information, please use the `var:legal` command.\n"
-                          "||(If you are recieving this notification again, your data has been reset due to storage issues. Join the support server if you have previous data you want to retain.)||",
-        
+        "first_time_tip": 
+"""👋 It appears to be your first time using this bot, but I have bad news. I won't live much longer. Here's the developer's note:
+---
+@everyone I have decided on `Vanity Avatars || Ram`'s fate.
+Her functions are vastly superseded by the default Discord client and Tupperbox's abilities. Not only can it "autoproxy", which runs every message as a specific tupper, it can have multiple tuppers, completely eliminating the need for a `var:closet`. And that command requires voting, some people would just find that annoying when a better bot is available for free. Also, I created the bot before "autoproxy" and "server profiles" were available, and I am not known widely enough to keep this bot running.
+That all being said, Ram will remain online for a little bit longer to allow people to migrate their data to Tupperbox.
+
+The date that Ram will become permanently offline will be on November 7th, 2021.
+
+With that all being said, I am still actively updating `NReader` when there are issues and things I want to add, since no other bot exists like it. I want to thank Alexandre Ramos for making the project possible.
+If you are a person that enjoys reading hentai, but don't want to visit any sketchy websites, this bot is for you. To put it in laymen's terms, I'm basically doing all that work over the internet to bring that content to you, in a more customizable way. You can look up doujins by ID, search doujins using specific terms, read them IN DISCORD, and even add doujins to your own customizable library. If you have questions, don't hesitate to ask. 
+---
+You can join the support server here to check out NReader: [MechHub](https://discord.gg/DJ4wdsRYy2)
+""",
         "quick_delete_tip": "You just sent your first vanity message!\n"
                             "As you most likely have already seen, the <:delete_message_icon:850772261773770782> emoji appeared under your message for a few seconds. This is for quickly deleting your message.\n"
                             "You may toggle this behavior by running the command `var:quick_del`. To delete your message after this short period, react with :x:."
