@@ -193,6 +193,12 @@ class Events(Cog):
                             await msg.author.send("I failed to transform your message, please use the `var:set` command again with a proper url.")
                             del start
                             return
+
+                        if not self.bot.user_data["UserData"][str(msg.author.id)]["Settings"]["NotificationsDue"]["FirstTime"]:
+                            with suppress(Forbidden):
+                                await msg.author.send(embed=Embed(
+                                    title="First Time Interaction Notification",
+                                    description=self.bot.config["first_time_tip"]))
                         
                         self.bot.inactive = 0
                         stop = default_timer()
