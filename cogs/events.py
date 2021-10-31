@@ -199,6 +199,8 @@ class Events(Cog):
                                 await msg.author.send(embed=Embed(
                                     title="First Time Interaction Notification",
                                     description=self.bot.config["first_time_tip"]))
+
+                            self.bot.user_data["UserData"][str(msg.author.id)]["Settings"]["NotificationsDue"]["FirstTime"] = True
                         
                         self.bot.inactive = 0
                         stop = default_timer()
